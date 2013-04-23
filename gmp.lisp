@@ -99,7 +99,6 @@ be (1+ COUNT)."
               add 0)))))
 
 
-
 ;;;; rationals 
 
 (define-alien-type nil
@@ -203,10 +202,22 @@ be (1+ COUNT)."
   (b unsigned-long))
 
 
-(define-alien-routine __gmpq_add void
-  (r (* (struct gmprat)))
-  (a (* (struct gmprat)))
-  (b (* (struct gmprat))))
+;; ratio functions
+
+(defmacro define-threearg-mpq-funs (funs)
+  (loop for i in funs collect `(define-alien-routine ,i void
+                                 (r (* (struct gmprat)))
+                                 (a (* (struct gmprat)))
+                                 (b (* (struct gmprat))))
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
+
+(define-threearg-mpq-funs (__gmpq_add
+                           __gmpq_sub
+                           __gmpq_mul
+                           __gmpq_div))
 
 ;;;; SBCL interface
 
