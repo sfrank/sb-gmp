@@ -21,11 +21,16 @@
 
 ;; tested with GMB lib 5.1
 (sb-alien::load-shared-object "libgmp.so")
+(defparameter *gmp-features* nil)
 (progn
   (defparameter *gmp-version* (extern-alien "__gmp_version" c-string))
-  (when (or (null *gmp-version*)
-            (string<= *gmp-version* "5."))
-    (error "SB-GMP requires at least GMP version 5.0")))
+  (if (or (null *gmp-version*)
+          (string<= *gmp-version* "5."))
+      (error "SB-GMP requires at least GMP version 5.0")
+      (progn
+        (push :GMP5.0 *gmp-features*)
+        (when (string>= *gmp-version* "5.1")
+          (push :GMP5.1 *gmp-features*)))))
 
 ;;; types and initialization
 
