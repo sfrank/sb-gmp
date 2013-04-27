@@ -1,4 +1,4 @@
-(defpackage :gmp-bignum (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL"))
+1(defpackage :gmp-bignum (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL"))
 (in-package :gmp-bignum)
 
 ;;;; NOTE: mpz_2fac_ui and mpz_primorial_ui where introduced in 5.1,
@@ -21,6 +21,11 @@
 
 ;; tested with GMB lib 5.1
 (sb-alien::load-shared-object "libgmp.so")
+(progn
+  (defparameter *gmp-version* (extern-alien "__gmp_version" c-string))
+  (when (or (null *gmp-version*)
+            (string<= *gmp-version* "5."))
+    (error "SB-GMP requires at least GMP version 5.0")))
 
 ;;; types and initialization
 
@@ -431,9 +436,9 @@ be (1+ COUNT)."
 ;;; Rational functions
 
 
-
 ;;; Tests
 
 ;; test corner case of magnitude => twos-complement conversion
 ;; (mpz-add #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF) => 18446744073709551614
+
 
