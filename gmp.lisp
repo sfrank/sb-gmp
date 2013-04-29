@@ -452,8 +452,8 @@ be (1+ COUNT)."
 (declaim (inline __gmp_randinit_mt
                  __gmp_randseed
                  __gmp_randseed_ui
-                 __gmp_urandomb
-                 __gmp_urandomm))
+                 __gmpz_urandomb
+                 __gmpz_urandomm))
 
 (define-alien-routine __gmp_randinit_mt void
   (s (* (struct gmprandstate))))
@@ -466,16 +466,63 @@ be (1+ COUNT)."
   (s (* (struct gmprandstate)))
   (sd unsigned-long))
 
-(define-alien-routine __gmp_urandomb void
+(define-alien-routine __gmpz_urandomb void
   (r (* (struct gmpint)))  
   (s (* (struct gmprandstate)))
   (bcnt unsigned-long))
 
-(define-alien-routine __gmp_urandomm void
+(define-alien-routine __gmpz_urandomm void
   (r (* (struct gmpint)))  
   (s (* (struct gmprandstate)))
   (n (* (struct gmpint))))
 
+(defstruct (gmp-rstate (:constructor %make-gmp-rstate))
+  (ref (make-alien (struct gmprandstate))
+   :type (alien (* (struct gmprandstate))) :read-only t))
+
+(defun make-gmp-rstate ()
+  "Instantiate a state for the GMP random number generator."
+  (declare (optimize (speed 3) (space 3)))
+  (let* ((state (%make-gmp-rstate))
+         (ref (gmp-rstate-ref state)))
+    (__gmp_randinit_mt ref)
+    (sb-ext:finalize state (lambda () (free-alien ref)))
+    state))
+
+(defun rand-seed (state seed)
+  "Initialize a random STATE with SEED."
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (check-type state gmp-rstate)
+  (let ((ref (gmp-rstate-ref state)))
+    (cond
+      ((typep seed '(unsigned-byte #.sb-vm:n-word-bits))
+       (__gmp_randseed_ui ref seed))
+      ((typep seed '(integer 0 *))
+       (with-mpz-vars ((seed gseed))
+         (__gmp_randseed ref (addr gseed))))
+      (t
+       (error "SEED must be a positive integer")))))
+
+(defun random-bitcount (state bitcount)
+  "Return a random integer in the range 0..(2^bitcount - 1)."
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type state gmp-rstate)
+  (check-type bitcount (unsigned-byte #.sb-vm:n-word-bits))
+  (let ((ref (gmp-rstate-ref state)))
+    (with-mpz-results ((result (1+ (ceiling bitcount sb-vm:n-word-bits))))
+      (__gmpz_urandomb (addr result) ref bitcount))))
+
+
+(defun random-int (state boundary)
+  "Return a random integer in the range 0..(boundary - 1)."
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type state gmp-rstate)
+  (let ((b (bassert boundary))
+        (ref (gmp-rstate-ref state)))
+    (with-mpz-results ((result (sb-bignum::%bignum-length b)))
+      (with-mpz-vars ((b gb))
+        (__gmpz_urandomm (addr result) ref (addr gb))))))
 
 
 ;;; Rational functions
