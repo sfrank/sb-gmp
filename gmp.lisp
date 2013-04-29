@@ -1,10 +1,6 @@
 1(defpackage :gmp-bignum (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL"))
 (in-package :gmp-bignum)
 
-;;;; NOTE: mpz_2fac_ui and mpz_primorial_ui where introduced in 5.1,
-;;;; whereas most distros so far only ship 5.0, so you might get an
-;;;; undefined alien error for these.
-
 ;;;; NOTE: if not annotated otherwise, all functions expect a true
 ;;;; SBCL bignum integer. This convention is not checked due to
 ;;;; optimization settings since this is a module mostly targeted at

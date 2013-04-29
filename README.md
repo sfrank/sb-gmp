@@ -7,8 +7,8 @@ This is still work in progress though mostly usable. For minor quirks refer to t
 
 Roadmap
 
-- add ratio support (mostly ready though not committed yet)
+- finish random number generation support
 - unit tests
-- benchmarks to find out heuristics for when to switvh to the GMP functions
+- benchmarks to find out heuristics for when to switch to the GMP functions
 - transparently integrate into SBCL using previous heuristics
  
