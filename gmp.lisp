@@ -443,6 +443,44 @@ be (1+ COUNT)."
     (__gmpz_fib2_ui (addr fibn) (addr fibn-1) n)))
 
 ;; TODO: add mpz random number generator support
+;;; Random bignum (mpz) generation
+
+;; we do not actually use the gestalt of struct but need its size for
+;; allocation purposes
+(define-alien-type nil
+    (struct gmprandstate
+            (mp_seed (struct gmpint))
+            (mp_alg int)
+            (mp_algdata (* t))))
+
+(declaim (inline __gmp_randinit_mt
+                 __gmp_randseed
+                 __gmp_randseed_ui
+                 __gmp_urandomb
+                 __gmp_urandomm))
+
+(define-alien-routine __gmp_randinit_mt void
+  (s (* (struct gmprandstate))))
+
+(define-alien-routine __gmp_randseed void
+  (s (* (struct gmprandstate)))
+  (sd (* (struct gmpint))))
+
+(define-alien-routine __gmp_randseed_ui void
+  (s (* (struct gmprandstate)))
+  (sd unsigned-long))
+
+(define-alien-routine __gmp_urandomb void
+  (r (* (struct gmpint)))  
+  (s (* (struct gmprandstate)))
+  (bcnt unsigned-long))
+
+(define-alien-routine __gmp_urandomm void
+  (r (* (struct gmpint)))  
+  (s (* (struct gmprandstate)))
+  (n (* (struct gmpint))))
+
+
 
 ;;; Rational functions
 
