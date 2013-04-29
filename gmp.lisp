@@ -30,7 +30,8 @@
       (progn
         (push :GMP5.0 *gmp-features*)
         (when (string>= *gmp-version* "5.1")
-          (push :GMP5.1 *gmp-features*)))))
+          (push :GMP5.1 *gmp-features*))
+        (setf *features* (append *features* *gmp-features*) ))))
 
 ;;; types and initialization
 
@@ -113,8 +114,8 @@ be (1+ COUNT)."
 
 (define-alien-type nil
     (struct gmprat
-            (mp_num (* (struct gmpint)))
-            (mp_den (* (struct gmpint)))))
+            (mp_num (struct gmpint))
+            (mp_den (struct gmpint))))
 
 ;;; memory initialization function to support non-alloced results
 ;;; since an upper bound cannot always correctly predetermined
@@ -193,10 +194,12 @@ be (1+ COUNT)."
   (r (* (struct gmpint)))
   (a unsigned-long))
 
+#+:GMP5.1
 (define-alien-routine __gmpz_2fac_ui void
   (r (* (struct gmpint)))
   (a unsigned-long))
 
+#+:GMP5.1
 (define-alien-routine __gmpz_primorial_ui void
   (r (* (struct gmpint)))
   (n unsigned-long))
@@ -264,15 +267,16 @@ be (1+ COUNT)."
   (loop for (a ga) in pairs
         for length = (gensym "LENGTH")
         for plusp = (gensym "PLUSP")
+        for arg = (gensym "ARG")
         collect `(,ga (struct gmpint)) into declares
         collect `(,length (sb-bignum::%bignum-length ,a)) into gmpinits
         collect `(,plusp (sb-bignum::%bignum-0-or-plusp ,a ,length)) into gmpinits
-        collect `(,a (if ,plusp ,a (sb-bignum::negate-bignum ,a))) into gmpinits
+        collect `(,arg (if ,plusp ,a (sb-bignum::negate-bignum ,a))) into gmpinits
         collect a into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
                        (slot ,ga 'mp_size) (if ,plusp ,length (- ,length))
                        (slot ,ga 'mp_d) (sb-sys:int-sap
-                                         (- (sb-kernel:get-lisp-obj-address ,a)
+                                         (- (sb-kernel:get-lisp-obj-address ,arg)
                                             +bignum-raw-area-offset+)))
           into gmpvarssetup
         finally (return
@@ -406,12 +410,14 @@ be (1+ COUNT)."
   (with-gmp-mpz-results (fac)
     (__gmpz_fac_ui (addr fac) n)))
 
+#+:GMP5.1
 (defun mpz-2fac (n)
   (declare (optimize (speed 3) (space 3) (safety 0))
            (type (unsigned-byte #.sb-vm:n-word-bits) n))
   (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
 
+#+:GMP5.1
 (defun mpz-primorial (n)
   (declare (optimize (speed 3) (space 3) (safety 0))
            (type (unsigned-byte #.sb-vm:n-word-bits) n))
@@ -440,6 +446,98 @@ be (1+ COUNT)."
 
 ;;; Rational functions
 
+(declaim (inline blength bassert))
+(defun blength (a)
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (if (sb-impl::fixnump a)
+      1
+      (sb-bignum::%bignum-length a)))
+
+(defun bassert (a)
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (if (sb-impl::fixnump a)
+      (sb-bignum:make-small-bignum a)
+      a))
+
+(defmacro defmpqfun (name gmpfun)
+  `(defun ,name (a b)
+     (declare (optimize (speed 3) (space 3) (safety 0))
+              (sb-ext:muffle-conditions sb-ext:compiler-note))
+     (let ((size (+ (max (blength (numerator a))
+                         (blength (denominator a)))
+                    (max (blength (numerator b))
+                         (blength (denominator b))))))
+       (with-alien ((r (struct gmprat)))
+         (let ((num (sb-bignum::%allocate-bignum size))
+               (den (sb-bignum::%allocate-bignum size)))
+           (sb-sys:with-pinned-objects (num den)
+             (setf (slot (slot r 'mp_num) 'mp_size) 0
+                   (slot (slot r 'mp_num) 'mp_alloc) size
+                   (slot (slot r 'mp_num) 'mp_d)
+                   (sb-sys:int-sap
+                    (- (sb-kernel:get-lisp-obj-address num)
+                       +bignum-raw-area-offset+)))
+             (setf (slot (slot r 'mp_den) 'mp_size) 0
+                   (slot (slot r 'mp_den) 'mp_alloc) size
+                   (slot (slot r 'mp_den) 'mp_d)
+                   (sb-sys:int-sap
+                    (- (sb-kernel:get-lisp-obj-address den)
+                       +bignum-raw-area-offset+)))
+             (let* ((an (bassert (numerator a)))
+                    (ad (bassert (denominator a)))
+                    (bn (bassert (numerator b)))
+                    (bd (bassert (denominator b))))
+               (let* ((anlen (sb-bignum::%bignum-length an))
+                      (adlen (sb-bignum::%bignum-length ad))
+                      (bnlen (sb-bignum::%bignum-length bn))
+                      (bdlen (sb-bignum::%bignum-length bd)))
+                 ;; handle negative numerators
+                 (when (minusp an)
+                   (setf anlen (- anlen))
+                   (sb-bignum::negate-bignum-in-place an))
+                 (when (minusp bn)
+                   (setf bnlen (- bnlen))
+                   (sb-bignum::negate-bignum-in-place bn))
+                 (with-alien ((arga (struct gmprat))
+                              (argb (struct gmprat)))
+                   (sb-sys:with-pinned-objects (an ad bn bd)
+                     (setf (slot (slot arga 'mp_num) 'mp_size) anlen
+                           (slot (slot arga 'mp_num) 'mp_alloc) (abs anlen)
+                           (slot (slot arga 'mp_num) 'mp_d)
+                           (sb-sys:int-sap
+                            (- (sb-kernel:get-lisp-obj-address an)
+                               +bignum-raw-area-offset+)))
+                     (setf (slot (slot arga 'mp_den) 'mp_size) adlen
+                           (slot (slot arga 'mp_den) 'mp_alloc) (abs adlen)
+                           (slot (slot arga 'mp_den) 'mp_d)
+                           (sb-sys:int-sap
+                            (- (sb-kernel:get-lisp-obj-address ad)
+                               +bignum-raw-area-offset+)))
+                     (setf (slot (slot argb 'mp_num) 'mp_size) bnlen
+                           (slot (slot argb 'mp_num) 'mp_alloc) (abs bnlen)
+                           (slot (slot argb 'mp_num) 'mp_d)
+                           (sb-sys:int-sap
+                            (- (sb-kernel:get-lisp-obj-address bn)
+                               +bignum-raw-area-offset+)))
+                     (setf (slot (slot argb 'mp_den) 'mp_size) bdlen
+                           (slot (slot argb 'mp_den) 'mp_alloc) (abs bdlen)
+                           (slot (slot argb 'mp_den) 'mp_d)
+                           (sb-sys:int-sap
+                            (- (sb-kernel:get-lisp-obj-address bd)
+                               +bignum-raw-area-offset+)))
+                     (,gmpfun (addr r) (addr arga) (addr argb)))))
+               (sb-kernel::build-ratio (if (minusp (slot (slot r 'mp_num) 'mp_size))
+                                           (z-to-bignum-neg num (- (slot (slot r 'mp_num) 'mp_size)))
+                                           (z-to-bignum num (slot (slot r 'mp_num) 'mp_size)))
+                                       (z-to-bignum den (slot (slot r 'mp_den) 'mp_size))))))))))
+
+(defmpqfun mpq-add __gmpq_add)
+
+(defmpqfun mpq-sub __gmpq_sub)
+
+(defmpqfun mpq-mul __gmpq_mul)
+
+(defmpqfun mpq-div __gmpq_div)
 
 ;;; Tests
 
