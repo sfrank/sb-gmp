@@ -1,5 +1,34 @@
-(defpackage :gmp-bignum (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL"))
-(in-package :gmp-bignum)
+(defpackage :sb-gmp (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL")
+            (:export ;; bignum integer operations
+                     #:mpz-add
+                     #:mpz-sub
+                     #:mpz-mul
+                     #:mpz-mod
+                     #:mpz-cdiv
+                     #:mpz-fdiv
+                     #:mpz-tdiv
+                     #:mpz-powm
+                     #:mpz-gcd
+                     #:mpz-lcm
+                     #:mpz-sqrt
+                     #:mpz-nextprime
+                     #:mpz-fac
+                     #:mpz-2fac
+                     #:mpz-primorial
+                     #:mpz-bin
+                     #:mpz-fib2
+                     ;; random number generation
+                     #:make-gmp-rstate
+                     #:rand-seed
+                     #:random-bitcount
+                     #:random-int
+                     ;; ratio arithmetic
+                     #:mpq-add
+                     #:mpq-sub
+                     #:mpq-mul
+                     #:mpq-div))
+
+(in-package :sb-gmp)
 
 ;;;; NOTE: if not annotated otherwise, all functions expect a true
 ;;;; SBCL bignum integer. This convention is not checked due to
@@ -16,8 +45,13 @@
   (1- (ash 1 (1- sb-vm:n-word-bits))))
 
 ;; tested with GMB lib 5.1
+#-win32
 (sb-alien::load-shared-object "libgmp.so")
+#+win32
+(sb-alien::load-shared-object "libgmp-10.dll")
+
 (defparameter *gmp-features* nil)
+
 (progn
   (defparameter *gmp-version* (extern-alien "__gmp_version" c-string))
   (if (or (null *gmp-version*)
