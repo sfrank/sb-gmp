@@ -1,4 +1,4 @@
-1(defpackage :gmp-bignum (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL"))
+(defpackage :gmp-bignum (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL"))
 (in-package :gmp-bignum)
 
 ;;;; NOTE: if not annotated otherwise, all functions expect a true
@@ -44,7 +44,7 @@
 ;; at some particular point can use mpz_realloc2, or clear variables
 ;; no longer needed."
 ;;
-;; We can therefore allocate a bignum sof sufficiant size and use the
+;; We can therefore allocate a bignum of sufficiant size and use the
 ;; space for GMP computations without the need for memory transfer
 ;; from C to Lisp space.
 
@@ -70,6 +70,8 @@ bignum."
    (sb-bignum::negate-bignum-in-place b)
    count))
 
+
+;;; conversion functions that also copy from GMP to SBCL bignum space
 
 (declaim (inline gmp-z-to-bignum gmp-z-to-bignum-neg))
 
@@ -113,7 +115,7 @@ be (1+ COUNT)."
             (mp_num (struct gmpint))
             (mp_den (struct gmpint))))
 
-;;; memory initialization function to support non-alloced results
+;;; memory initialization functions to support non-alloced results
 ;;; since an upper bound cannot always correctly predetermined
 ;;; (e.g. the memory required for the fib function exceed the number
 ;;; of limbs that are be determined through the infamous Phi-relation
@@ -438,8 +440,7 @@ be (1+ COUNT)."
   (with-gmp-mpz-results (fibn fibn-1)
     (__gmpz_fib2_ui (addr fibn) (addr fibn-1) n)))
 
-;; TODO: add mpz random number generator support
-;;; Random bignum (mpz) generation
+;;;; Random bignum (mpz) generation
 
 ;; we do not actually use the gestalt of struct but need its size for
 ;; allocation purposes
