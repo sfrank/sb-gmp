@@ -89,10 +89,7 @@
   (declare (optimize (speed 3) (space 3) (safety 0))
            (type sb-bignum::bignum-type b)
            (type sb-bignum::bignum-index count))
-  (if (> (sb-bignum::%bignum-ref b (1- count))
-         +long-max+) ; handle most signif. limb > LONG_MAX
-      (sb-bignum::%bignum-set-length b (1+ count))
-      (sb-bignum::%bignum-set-length b count)))
+  (sb-bignum::%normalize-bignum b count))
 
 (defun z-to-bignum-neg (b count)
   "Convert to twos complement int the buffer of a pre-allocated
@@ -101,7 +98,7 @@ bignum."
            (type sb-bignum::bignum-type b)
            (type sb-bignum::bignum-index count))
   (sb-bignum::negate-bignum-in-place b)
-  (sb-bignum::%bignum-set-length b count))
+  (sb-bignum::%normalize-bignum b count))
 
 
 ;;; conversion functions that also copy from GMP to SBCL bignum space
@@ -115,10 +112,7 @@ pre-allocated bignum. The allocated bignum-length must be (1+ COUNT)."
            (type (alien (* unsigned-long)) z)
            (type sb-bignum::bignum-type b)
            (type sb-bignum::bignum-index count))
-  (dotimes (i count (if (> (sb-bignum::%bignum-ref b (1- count))
-                           +long-max+) ; handle most signif. limb > LONG_MAX
-                        (sb-bignum::%bignum-set-length b (1+ count))
-                        (sb-bignum::%bignum-set-length b count)))
+  (dotimes (i count (sb-bignum::%normalize-bignum b count))
     (sb-bignum::%bignum-set b i (deref z i))))
 
 (defun gmp-z-to-bignum-neg (z b count)
@@ -281,8 +275,8 @@ be (1+ COUNT)."
                                               +bignum-raw-area-offset+)))
           into inits
         collect `(if (minusp (slot ,gres 'mp_size)) ; check for negative result
-                     (z-to-bignum-neg ,res (abs (slot ,gres 'mp_size)))
-                     (z-to-bignum ,res (slot ,gres 'mp_size)))
+                     (z-to-bignum-neg ,res ,size)
+                     (z-to-bignum ,res ,size))
           into normlimbs
         collect res into results
         finally (return
@@ -291,8 +285,7 @@ be (1+ COUNT)."
                        (with-alien ,declares
                          ,@inits
                          ,@body
-                         ,@normlimbs))
-                     (values ,@results)))))
+                         (values ,@normlimbs)))))))
 
 (defmacro with-mpz-vars (pairs &body body)
   (loop for (a ga) in pairs
@@ -326,9 +319,9 @@ be (1+ COUNT)."
         collect `(,res (sb-bignum:%allocate-bignum 
                         (1+ (abs (slot ,gres 'mp_size)))))
           into resinits
-        collect `(if (minusp (slot ,gres 'mp_size)) ; check for negative result
-                     (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res (abs (slot ,gres 'mp_size)))
-                     (gmp-z-to-bignum (slot ,gres 'mp_d) ,res (slot ,gres 'mp_size))) 
+        collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
+                                (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res (1+ (abs (slot ,gres 'mp_size))))
+                                (gmp-z-to-bignum (slot ,gres 'mp_d) ,res (1+ (slot ,gres 'mp_size))))) 
           into copylimbs
         collect `(__gmpz_clear (addr ,gres)) into clears
         collect res into results
@@ -642,9 +635,9 @@ be (1+ COUNT)."
                                +bignum-raw-area-offset+)))
                      (,gmpfun (addr r) (addr arga) (addr argb)))))
                (sb-kernel::build-ratio (if (minusp (slot (slot r 'mp_num) 'mp_size))
-                                           (z-to-bignum-neg num (- (slot (slot r 'mp_num) 'mp_size)))
-                                           (z-to-bignum num (slot (slot r 'mp_num) 'mp_size)))
-                                       (z-to-bignum den (slot (slot r 'mp_den) 'mp_size))))))))))
+                                           (z-to-bignum-neg num size)
+                                           (z-to-bignum num size))
+                                       (z-to-bignum den size)))))))))
 
 (defmpqfun mpq-add __gmpq_add)
 
