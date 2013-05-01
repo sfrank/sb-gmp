@@ -91,8 +91,8 @@
            (type sb-bignum::bignum-index count))
   (if (> (sb-bignum::%bignum-ref b (1- count))
          +long-max+) ; handle most signif. limb > LONG_MAX
-      (sb-bignum::%normalize-bignum b (1+ count))
-      (sb-bignum::%normalize-bignum b count)))
+      (sb-bignum::%bignum-set-length b (1+ count))
+      (sb-bignum::%bignum-set-length b count)))
 
 (defun z-to-bignum-neg (b count)
   "Convert to twos complement int the buffer of a pre-allocated
@@ -100,9 +100,8 @@ bignum."
   (declare (optimize (speed 3) (space 3) (safety 0))
            (type sb-bignum::bignum-type b)
            (type sb-bignum::bignum-index count))
-  (sb-bignum::%normalize-bignum 
-   (sb-bignum::negate-bignum-in-place b)
-   count))
+  (sb-bignum::negate-bignum-in-place b)
+  (sb-bignum::%bignum-set-length b count))
 
 
 ;;; conversion functions that also copy from GMP to SBCL bignum space
@@ -118,8 +117,8 @@ pre-allocated bignum. The allocated bignum-length must be (1+ COUNT)."
            (type sb-bignum::bignum-index count))
   (dotimes (i count (if (> (sb-bignum::%bignum-ref b (1- count))
                            +long-max+) ; handle most signif. limb > LONG_MAX
-                        (sb-bignum::%normalize-bignum b (1+ count))
-                        (sb-bignum::%normalize-bignum b count)))
+                        (sb-bignum::%bignum-set-length b (1+ count))
+                        (sb-bignum::%bignum-set-length b count)))
     (sb-bignum::%bignum-set b i (deref z i))))
 
 (defun gmp-z-to-bignum-neg (z b count)
@@ -283,7 +282,7 @@ be (1+ COUNT)."
           into inits
         collect `(if (minusp (slot ,gres 'mp_size)) ; check for negative result
                      (z-to-bignum-neg ,res (abs (slot ,gres 'mp_size)))
-                     (z-to-bignum ,res (slot ,gres 'mp_size))) 
+                     (z-to-bignum ,res (slot ,gres 'mp_size)))
           into normlimbs
         collect res into results
         finally (return
@@ -658,6 +657,6 @@ be (1+ COUNT)."
 ;;; Tests
 
 ;; test corner case of magnitude => twos-complement conversion
-;; (mpz-add #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF) => 18446744073709551614
+;; (sb-gmp:mpz-add #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF) => 18446744073709551614
 
 
