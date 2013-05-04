@@ -298,7 +298,11 @@ be (1+ COUNT)."
         collect `(,arg (if ,plusp ,a (sb-bignum::negate-bignum ,a))) into gmpinits
         collect a into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
-                       (slot ,ga 'mp_size) (if ,plusp ,length (- ,length))
+                       (slot ,ga 'mp_size) 
+                       (progn ;; handle twos complements/ulong limbs mismatch
+                         (when (zerop (sb-bignum::%bignum-ref ,a (1- ,length)))
+                           (decf ,length))
+                         (if ,plusp ,length (- ,length)))
                        (slot ,ga 'mp_d) (sb-sys:int-sap
                                          (- (sb-kernel:get-lisp-obj-address ,arg)
                                             +bignum-raw-area-offset+)))
@@ -652,4 +656,5 @@ be (1+ COUNT)."
 ;; test corner case of magnitude => twos-complement conversion
 ;; (sb-gmp:mpz-add #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF) => 18446744073709551614
 
-
+;; corner case for arguments twos complements/ulong limbs conversion
+;; (sb-gmp:mpz-tdiv 30951488519636377404900619671461408624764773310745985021994671444676860083493 200662724990805535745252242839121922075)
