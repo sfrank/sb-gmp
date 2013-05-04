@@ -89,7 +89,9 @@
   (declare (optimize (speed 3) (space 3) (safety 0))
            (type sb-bignum::bignum-type b)
            (type sb-bignum::bignum-index count))
-  (sb-bignum::%normalize-bignum b count))
+  (if (zerop count)
+      0
+      (sb-bignum::%normalize-bignum b count)))
 
 (defun z-to-bignum-neg (b count)
   "Convert to twos complement int the buffer of a pre-allocated
