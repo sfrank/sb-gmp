@@ -295,14 +295,14 @@ be (1+ COUNT)."
         for plusp = (gensym "PLUSP")
         for arg = (gensym "ARG")
         collect `(,ga (struct gmpint)) into declares
-        collect `(,length (sb-bignum::%bignum-length ,a)) into gmpinits
-        collect `(,plusp (sb-bignum::%bignum-0-or-plusp ,a ,length)) into gmpinits
+        collect `(,plusp (sb-bignum::%bignum-0-or-plusp ,a (sb-bignum::%bignum-length ,a))) into gmpinits
         collect `(,arg (if ,plusp ,a (sb-bignum::negate-bignum ,a))) into gmpinits
+        collect `(,length (sb-bignum::%bignum-length ,arg)) into gmpinits
         collect a into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
                        (slot ,ga 'mp_size) 
                        (progn ;; handle twos complements/ulong limbs mismatch
-                         (when (zerop (sb-bignum::%bignum-ref ,a (1- ,length)))
+                         (when (zerop (sb-bignum::%bignum-ref ,arg (1- ,length)))
                            (decf ,length))
                          (if ,plusp ,length (- ,length)))
                        (slot ,ga 'mp_d) (sb-sys:int-sap
@@ -652,11 +652,3 @@ be (1+ COUNT)."
 (defmpqfun mpq-mul __gmpq_mul)
 
 (defmpqfun mpq-div __gmpq_div)
-
-;;; Tests
-
-;; test corner case of magnitude => twos-complement conversion
-;; (sb-gmp:mpz-add #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF) => 18446744073709551614
-
-;; corner case for arguments twos complements/ulong limbs conversion
-;; (sb-gmp:mpz-tdiv 30951488519636377404900619671461408624764773310745985021994671444676860083493 200662724990805535745252242839121922075)
