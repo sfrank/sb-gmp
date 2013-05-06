@@ -371,22 +371,22 @@ be (1+ COUNT)."
       (__gmpz_mul (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-mod (a b)
-  (with-mpz-results ((result (max (sb-bignum::%bignum-length a)
-                                  (sb-bignum::%bignum-length b))))
+  (with-mpz-results ((result (1+ (max (sb-bignum::%bignum-length a)
+                                      (sb-bignum::%bignum-length b)))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_mod (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-cdiv (n d)
-  (let ((size (max (sb-bignum::%bignum-length n)
-                   (sb-bignum::%bignum-length d))))
+  (let ((size (1+ (max (sb-bignum::%bignum-length n)
+                       (sb-bignum::%bignum-length d)))))
     (with-mpz-results ((quot size)
                        (rem size))
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_cdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defgmpfun mpz-fdiv (n d)
-  (let ((size (max (sb-bignum::%bignum-length n)
-                   (sb-bignum::%bignum-length d))))
+  (let ((size (1+ (max (sb-bignum::%bignum-length n)
+                       (sb-bignum::%bignum-length d)))))
     (with-mpz-results ((quot size)
                        (rem size))
       (with-mpz-vars ((n gn) (d gd))
@@ -401,7 +401,7 @@ be (1+ COUNT)."
         (__gmpz_tdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defgmpfun mpz-powm (base exp mod)
-  (with-mpz-results ((rop (sb-bignum::%bignum-length mod)))
+  (with-mpz-results ((rop (1+ (sb-bignum::%bignum-length mod))))
     (with-mpz-vars ((base gbase) (exp gexp) (mod gmod))
       (__gmpz_powm (addr rop) (addr gbase) (addr gexp) (addr gmod)))))
 
@@ -418,7 +418,7 @@ be (1+ COUNT)."
       (__gmpz_lcm (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-sqrt (a)
-  (with-mpz-results ((result (ceiling (sb-bignum::%bignum-length a) 2)))
+  (with-mpz-results ((result (1+ (ceiling (sb-bignum::%bignum-length a) 2))))
     (with-mpz-vars ((a ga))
       (__gmpz_sqrt (addr result) (addr ga)))))
 
@@ -543,7 +543,7 @@ be (1+ COUNT)."
   (check-type state gmp-rstate)
   (check-type bitcount (unsigned-byte #.sb-vm:n-word-bits))
   (let ((ref (gmp-rstate-ref state)))
-    (with-mpz-results ((result (1+ (ceiling bitcount sb-vm:n-word-bits))))
+    (with-mpz-results ((result (+ (ceiling bitcount sb-vm:n-word-bits) 2)))
       (__gmpz_urandomb (addr result) ref bitcount))))
 
 
@@ -553,7 +553,7 @@ be (1+ COUNT)."
   (check-type state gmp-rstate)
   (let ((b (bassert boundary))
         (ref (gmp-rstate-ref state)))
-    (with-mpz-results ((result (sb-bignum::%bignum-length b)))
+    (with-mpz-results ((result (1+ (sb-bignum::%bignum-length b))))
       (with-mpz-vars ((b gb))
         (__gmpz_urandomm (addr result) ref (addr gb))))))
 
