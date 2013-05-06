@@ -6,7 +6,7 @@
 
 (defparameter *state* nil)
 
-(defun bench-+ () ; never
+(defun bench-+ () ; 33 / never?
   (macrolet ((tstfun (f a b)
                `(lambda ()
                   (loop for i in ,a
@@ -83,7 +83,7 @@
                           (format *stream* "Test PASSED~2%")
                           (format *stream* "Test FAILED~2%"))))))))
 
-(defun bench-/ () ; limbs 11 / 5
+(defun bench-/ () ; limbs 10 / 5
   (macrolet ((tstfun (f a b)
                `(lambda ()
                   (loop for i in ,a
