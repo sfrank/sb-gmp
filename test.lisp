@@ -19,8 +19,9 @@
   (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
 
 (test mpz-add "Test the mpz-add function"
+  (sb-gmp:rand-seed *state* 1234)
   (dotimes (i 5)
-    (let ((limbs (+ (random #x1FFFF) 2)))
+    (let ((limbs (+ (random #xFFFFF) 2)))
       (for-all ((neg-a (gen-integer :min 0 :max 1))
                 (neg-b (gen-integer :min 0 :max 1))
                 (a (gen-mpz :limbs limbs))
@@ -28,11 +29,10 @@
         (let ((ta (if (zerop neg-a) a (- a)))
               (tb (if (zerop neg-b) b (- b))))
           (is (= (+ ta tb)
-                 (sb-gmp:mpz-add ta tb)))))))
-  (is (= (+ #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF)
-         (sb-gmp:mpz-add #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF))))
+                 (sb-gmp:mpz-add ta tb))))))))
 
 (test mpz-sub "Test the mpz-sub function"
+  (sb-gmp:rand-seed *state* 1234)
   (dotimes (i 5)
     (let ((limbs (+ (random #x1FFFF) 2)))
       (for-all ((neg-a (gen-integer :min 0 :max 1))
@@ -45,6 +45,7 @@
                  (sb-gmp:mpz-sub ta tb))))))))
 
 (test mpz-mul "Test the mpz-mul function"
+  (sb-gmp:rand-seed *state* 1234)
   (dotimes (i 5)
     (let ((limbs (+ (random #x253F) 2)))
       (for-all ((neg-a (gen-integer :min 0 :max 1))
@@ -57,6 +58,7 @@
                  (sb-gmp:mpz-mul ta tb))))))))
 
 (test mpz-truncate "Test the mpz-tdiv function"
+  (sb-gmp:rand-seed *state* 1234)
   (dotimes (i 5)
     (let ((limbs (+ (random #x253F) 2)))
       (for-all ((neg-a (gen-integer :min 0 :max 1))
@@ -71,6 +73,99 @@
                 (sb-gmp:mpz-tdiv ta tb)
               (is (and (= ld gd)
                        (= lr gr))))))))))
+
+(test mpz-floor "Test the mpz-fdiv function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (+ (random #x253F) 2)))
+      (for-all ((neg-a (gen-integer :min 0 :max 1))
+                (neg-b (gen-integer :min 0 :max 1))
+                (a (gen-mpz :limbs limbs))
+                (b (gen-mpz :limbs limbs)))
+        (let ((ta (if (zerop neg-a) a (- a)))
+              (tb (if (zerop neg-b) b (- b))))
+          (multiple-value-bind (ld lr)
+              (floor ta tb)
+            (multiple-value-bind (gd gr)
+                (sb-gmp:mpz-fdiv ta tb)
+              (is (and (= ld gd)
+                       (= lr gr))))))))))
+
+(test mpz-ceiling "Test the mpz-cdiv function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (+ (random #x253F) 2)))
+      (for-all ((neg-a (gen-integer :min 0 :max 1))
+                (neg-b (gen-integer :min 0 :max 1))
+                (a (gen-mpz :limbs limbs))
+                (b (gen-mpz :limbs limbs)))
+        (let ((ta (if (zerop neg-a) a (- a)))
+              (tb (if (zerop neg-b) b (- b))))
+          (multiple-value-bind (ld lr)
+              (ceiling ta tb)
+            (multiple-value-bind (gd gr)
+                (sb-gmp:mpz-cdiv ta tb)
+              (is (and (= ld gd)
+                       (= lr gr))))))))))
+
+(test mpz-gcd "Test the mpz-gcd function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (+ (random #x253F) 2)))
+      (for-all ((neg-a (gen-integer :min 0 :max 1))
+                (neg-b (gen-integer :min 0 :max 1))
+                (a (gen-mpz :limbs limbs))
+                (b (gen-mpz :limbs limbs)))
+        (let ((ta (if (zerop neg-a) a (- a)))
+              (tb (if (zerop neg-b) b (- b))))
+          (is (= (gcd ta tb)
+                 (sb-gmp:mpz-gcd ta tb))))))))
+
+(test mpz-lcm "Test the mpz-lcm function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (+ (random #x253F) 2)))
+      (for-all ((neg-a (gen-integer :min 0 :max 1))
+                (neg-b (gen-integer :min 0 :max 1))
+                (a (gen-mpz :limbs limbs))
+                (b (gen-mpz :limbs limbs)))
+        (let ((ta (if (zerop neg-a) a (- a)))
+              (tb (if (zerop neg-b) b (- b))))
+          (is (= (lcm ta tb)
+                 (sb-gmp:mpz-lcm ta tb))))))))
+
+(test mpz-isqrt "Test the mpz-isqrt function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (+ (random #x253F) 2)))
+      (for-all ((a (gen-mpz :limbs limbs)))
+        (is (= (isqrt a)
+               (sb-gmp:mpz-sqrt a)))))))
+
+(test mpz-mod "Test the mpz-mod function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (1+ (random #x253F))))
+      (for-all ((neg-a (gen-integer :min 0 :max 1))
+                (neg-b (gen-integer :min 0 :max 1))
+                (a (gen-mpz :limbs limbs))
+                (b (gen-mpz :limbs limbs)))
+        (let ((ta (if (zerop neg-a) a (- a)))
+              (tb (if (zerop neg-b) b (- b))))
+          (is (= (mod ta (abs tb))
+                 (sb-gmp:mpz-mod ta tb))))))))
+
+(test mpz-powm "Test the mpz-powm function"
+  (sb-gmp:rand-seed *state* 1234)
+  (dotimes (i 5)
+    (let ((limbs (1+ (random #x125))))
+      (for-all ((neg-a (gen-integer :min 0 :max 1))
+                (a (gen-mpz :limbs limbs))
+                (m (gen-mpz :limbs (ceiling limbs 2))))
+        (let ((e (sb-bignum:make-small-bignum (1+ (random 40))))
+              (ta (if (zerop neg-a) a (- a))))
+          (is (= (mod (expt ta e) m)
+                 (sb-gmp:mpz-powm ta e m))))))))
 
 (test fixed-bugs "Tests for found bugs"
   (is (= (+ #x7FFFFFFFFFFFFFFF #x7FFFFFFFFFFFFFFF)
@@ -91,3 +186,4 @@
           (sb-gmp:mpz-tdiv a b)
         (is (and (= ld gd)
                  (= lr gr)))))))
+
