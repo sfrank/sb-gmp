@@ -323,14 +323,17 @@ be (1+ COUNT)."
 (defmacro with-gmp-mpz-results (resultvars &body body)
   (loop for gres in resultvars
         for res = (gensym "RESULT")
+        for size = (gensym "SIZE")
+        collect size into sizes
         collect `(,gres (struct gmpint)) into declares
         collect `(__gmpz_init (addr ,gres)) into inits
-        collect `(,res (sb-bignum:%allocate-bignum 
-                        (1+ (abs (slot ,gres 'mp_size)))))
+        collect `(,size (1+ (abs (slot ,gres 'mp_size))))
+          into resinits
+        collect `(,res (sb-bignum:%allocate-bignum ,size))
           into resinits
         collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
-                                (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res (1+ (abs (slot ,gres 'mp_size))))
-                                (gmp-z-to-bignum (slot ,gres 'mp_d) ,res (1+ (slot ,gres 'mp_size))))) 
+                                (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res ,size)
+                                (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size))) 
           into copylimbs
         collect `(__gmpz_clear (addr ,gres)) into clears
         collect res into results
@@ -339,6 +342,7 @@ be (1+ COUNT)."
                      ,@inits
                      ,@body
                      (let* ,resinits
+                       (declare (type sb-bignum::bignum-index ,@sizes))
                        ;; copy GMP limbs into result bignum
                        (sb-sys:with-pinned-objects ,results
                          ,@copylimbs)
@@ -484,8 +488,8 @@ be (1+ COUNT)."
 
 ;;;; Random bignum (mpz) generation
 
-;; we do not actually use the gestalt of struct but need its size for
-;; allocation purposes
+;; we do not actually use the gestalt of the struct but need its size
+;; for allocation purposes
 (define-alien-type nil
     (struct gmprandstate
             (mp_seed (struct gmpint))
