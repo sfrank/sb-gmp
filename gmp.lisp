@@ -11,6 +11,7 @@
                      #:mpz-gcd
                      #:mpz-lcm
                      #:mpz-sqrt
+                     #:mpz-probably-prime-p
                      #:mpz-nextprime
                      #:mpz-fac
                      #:mpz-2fac
@@ -208,11 +209,16 @@ be (1+ COUNT)."
                           __gmpz_powm))
 
 
-(declaim (inline __gmpz_fac_ui
+(declaim (inline __gmpz_probab_prime_p
+                 __gmpz_fac_ui
                  __gmpz_2fac_ui
                  __gmpz_primorial_ui
                  __gmpz_bin_ui
                  __gmpz_fib2_ui))
+
+(define-alien-routine __gmpz_probab_prime_p int
+  (n (* (struct gmpint)))
+  (reps int))
 
 (define-alien-routine __gmpz_fac_ui void
   (r (* (struct gmpint)))
@@ -423,6 +429,13 @@ be (1+ COUNT)."
 ;;; Functions that use GMP-side allocated integers and copy the result
 ;;; into a SBCL bignum at the end of the computation when the required
 ;;; bignum length is known.
+
+(defun mpz-probably-prime-p (n &optional (reps 25))
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (type sb-bignum::bignum-type n))
+  (check-type reps fixnum)
+  (with-mpz-vars ((n gn))
+    (__gmpz_probab_prime_p (addr gn) reps)))
 
 (defun mpz-nextprime (a)
   (declare (optimize (speed 3) (space 3) (safety 0))

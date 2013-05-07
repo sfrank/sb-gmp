@@ -187,3 +187,11 @@
         (is (and (= ld gd)
                  (= lr gr)))))))
 
+
+(test mpz-nextprime "Test the mpz-nextprime/mpz-probably-prime-p function"
+  (sb-gmp:rand-seed *state* 6234)
+  (let ((limbs (1+ (random #x2F))))
+    (for-all ((a (gen-mpz :limbs limbs)))
+      (let ((p (sb-gmp:mpz-nextprime a)))
+        (is (>= p a))
+        (is (> (sb-gmp:mpz-probably-prime-p p) 0))))))
