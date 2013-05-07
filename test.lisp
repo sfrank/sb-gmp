@@ -163,7 +163,7 @@
                 (a (gen-mpz :limbs limbs))
                 (m (gen-mpz :limbs (ceiling limbs 2))))
         (let ((e (sb-bignum:make-small-bignum (1+ (random 40))))
-              (ta (if (zerop neg-a) a (- a))))
+              (ta (sb-gmp::bassert (if (zerop neg-a) a (- a)))))
           (is (= (mod (expt ta e) m)
                  (sb-gmp:mpz-powm ta e m))))))))
 
