@@ -295,7 +295,7 @@ be (1+ COUNT)."
         collect `(,plusp (sb-bignum::%bignum-0-or-plusp ,a (sb-bignum::%bignum-length ,a))) into gmpinits
         collect `(,arg (if ,plusp ,a (sb-bignum::negate-bignum ,a))) into gmpinits
         collect `(,length (sb-bignum::%bignum-length ,arg)) into gmpinits
-        collect a into vars
+        collect arg into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
                        (slot ,ga 'mp_size) 
                        (progn ;; handle twos complements/ulong limbs mismatch
