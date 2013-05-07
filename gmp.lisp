@@ -41,9 +41,6 @@
   (- sb-vm:other-pointer-lowtag
      sb-vm:n-word-bytes))
 
-(defconstant +long-max+
-  (1- (ash 1 (1- sb-vm:n-word-bits))))
-
 ;; tested with GMB lib 5.1
 #-win32
 (sb-alien::load-shared-object "libgmp.so")
