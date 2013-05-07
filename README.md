@@ -7,7 +7,6 @@ This is still work in progress though mostly usable. For minor quirks refer to t
 
 Roadmap
 
-- unit tests
 - benchmarks to find out heuristics for when to switch to the GMP functions
 - transparently integrate into SBCL using previous heuristics
  
