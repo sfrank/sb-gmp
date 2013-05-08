@@ -574,7 +574,7 @@ be (1+ COUNT)."
 
 ;;; Rational functions
 
-(declaim (inline blength bassert))
+(declaim (inline blength bassert lsize))
 (defun blength (a)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (if (sb-impl::fixnump a)
@@ -586,6 +586,13 @@ be (1+ COUNT)."
   (if (sb-impl::fixnump a)
       (sb-bignum:make-small-bignum a)
       a))
+
+(defun lsize (minusp n)
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (let ((length (sb-bignum::%bignum-length n)))
+    (when (zerop (sb-bignum::%bignum-ref n (1- length)))
+      (decf length))
+    (if minusp (- length) length)))
 
 (defmacro defmpqfun (name gmpfun)
   `(defun ,name (a b)
@@ -612,21 +619,20 @@ be (1+ COUNT)."
                    (sb-sys:int-sap
                     (- (sb-kernel:get-lisp-obj-address den)
                        +bignum-raw-area-offset+)))
-             (let* ((an (bassert (numerator a)))
+             (let* ((asign (minusp a))
+                    (an (bassert (numerator a)))
                     (ad (bassert (denominator a)))
+                    (bsign (minusp b))
                     (bn (bassert (numerator b)))
                     (bd (bassert (denominator b))))
-               (let* ((anlen (sb-bignum::%bignum-length an))
-                      (adlen (sb-bignum::%bignum-length ad))
-                      (bnlen (sb-bignum::%bignum-length bn))
-                      (bdlen (sb-bignum::%bignum-length bd)))
-                 ;; handle negative numerators
-                 (when (minusp an)
-                   (setf anlen (- anlen))
-                   (sb-bignum::negate-bignum-in-place an))
-                 (when (minusp bn)
-                   (setf bnlen (- bnlen))
-                   (sb-bignum::negate-bignum-in-place bn))
+               (when asign
+                 (sb-bignum::negate-bignum-in-place an))
+               (when bsign
+                 (sb-bignum::negate-bignum-in-place bn))
+               (let* ((anlen (lsize asign an))
+                      (adlen (lsize NIL ad))
+                      (bnlen (lsize bsign bn))
+                      (bdlen (lsize NIL bd)))
                  (with-alien ((arga (struct gmprat))
                               (argb (struct gmprat)))
                    (sb-sys:with-pinned-objects (an ad bn bd)
