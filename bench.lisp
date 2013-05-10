@@ -6,7 +6,7 @@
 
 (defparameter *state* nil)
 
-(defun bench-+ () ; 33 / never?
+(defun bench-+ () ; limbs: never
   (macrolet ((tstfun (f a b)
                `(lambda ()
                   (loop for i in ,a
@@ -15,13 +15,13 @@
     (loop for limbs fixnum from 2
           with gmp-win = 0
           until (or (= gmp-win 5)
-                    (= limbs 80))
+                    (= limbs 78)) ; > 78 exhausts default heap size
           do
              (loop 
                for i below 100000
-               collect (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits))
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
-               collect (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits))
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-b
                finally
                   (let (time1 time2)
@@ -45,7 +45,7 @@
                           (format *stream* "Test FAILED~2%"))))))))
 
 
-(defun bench-* () ; limbs 5
+(defun bench-* () ; limbs 6
   (macrolet ((tstfun (f a b)
                `(lambda ()
                   (loop for i in ,a
@@ -58,9 +58,9 @@
           do
              (loop 
                for i below 10000
-               collect (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits))
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
-               collect (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits))
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-b
                finally
                   (let (time1 time2)
@@ -83,24 +83,23 @@
                           (format *stream* "Test PASSED~2%")
                           (format *stream* "Test FAILED~2%"))))))))
 
-(defun bench-/ () ; limbs 10 / 5
+(defun bench-/ () ; limbs 3 / 2
   (macrolet ((tstfun (f a b)
                `(lambda ()
                   (loop for i in ,a
                         for j in ,b
-                        ;do (format t "a: ~s~%b: ~s~%" i j)
                         collect (,f i j)))))
-    (loop for limbs fixnum from 4
-          for limbs_b fixnum from 2
+    (loop for limbs fixnum from 2
+          for limbs_b fixnum from 1
           with gmp-win = 0
           until (or (= gmp-win 3)
                     (= limbs 100))
           do
              (loop 
                for i below 100
-               collect (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits))
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
-               collect (1+ (sb-gmp:random-bitcount *state* (* limbs_b sb-vm:n-word-bits)))
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs_b sb-vm:n-word-bits)))
                  into list-b
                finally
                   (let (time1 time2)
@@ -115,6 +114,82 @@
                                          (lambda (&rest plist) 
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpz-tdiv list-a list-b)))))
+                      (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
+                              limbs time1 time2)
+                      (when (< (getf time2 :PROCESSOR-CYCLES)
+                               (getf time1 :PROCESSOR-CYCLES))
+                        (incf gmp-win))
+                      (if (= (length r-sbcl) (length r-gmp))
+                          (format *stream* "Test PASSED~2%")
+                          (format *stream* "Test FAILED~2%"))))))))
+
+(defun bench-gcd () ; limbs: always
+  (macrolet ((tstfun (f a b)
+               `(lambda ()
+                  (loop for i in ,a
+                        for j in ,b
+                        collect (,f i j)))))
+    (loop for limbs fixnum from 2
+          for limbs_b fixnum from 1
+          with gmp-win = 0
+          until (or (= gmp-win 3)
+                    (= limbs 100))
+          do
+             (loop 
+               for i below 100
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
+                 into list-a
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs_b sb-vm:n-word-bits)))
+                 into list-b
+               finally
+                  (let (time1 time2)
+                    (format t "bench it~%")
+                    (let ((r-sbcl (progn (sb-ext:gc)
+                                         (sb-ext:call-with-timing 
+                                          (lambda (&rest plist) 
+                                            (setf time1 plist))
+                                          (tstfun gcd list-a list-b))))
+                          (r-gmp (progn (sb-ext:gc)
+                                        (sb-ext:call-with-timing 
+                                         (lambda (&rest plist) 
+                                           (setf time2 plist))
+                                         (tstfun sb-gmp:mpz-gcd list-a list-b)))))
+                      (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
+                              limbs time1 time2)
+                      (when (< (getf time2 :PROCESSOR-CYCLES)
+                               (getf time1 :PROCESSOR-CYCLES))
+                        (incf gmp-win))
+                      (if (= (length r-sbcl) (length r-gmp))
+                          (format *stream* "Test PASSED~2%")
+                          (format *stream* "Test FAILED~2%"))))))))
+
+(defun bench-isqrt () ; limbs: always
+  (macrolet ((tstfun (f a)
+               `(lambda ()
+                  (loop for i in ,a
+                        collect (,f i)))))
+    (loop for limbs fixnum from 1
+          with gmp-win = 0
+          until (or (= gmp-win 3)
+                    (= limbs 100))
+          do
+             (loop 
+               for i below 100
+               collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
+                 into list-a
+               finally
+                  (let (time1 time2)
+                    (format t "bench it~%")
+                    (let ((r-sbcl (progn (sb-ext:gc)
+                                         (sb-ext:call-with-timing 
+                                          (lambda (&rest plist) 
+                                            (setf time1 plist))
+                                          (tstfun isqrt list-a))))
+                          (r-gmp (progn (sb-ext:gc)
+                                        (sb-ext:call-with-timing 
+                                         (lambda (&rest plist) 
+                                           (setf time2 plist))
+                                         (tstfun sb-gmp:mpz-sqrt list-a)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
                               limbs time1 time2)
                       (when (< (getf time2 :PROCESSOR-CYCLES)
