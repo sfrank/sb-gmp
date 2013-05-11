@@ -63,12 +63,6 @@
 
 ;;; types and initialization
 
-(define-alien-type nil
-    (struct gmpint
-            (mp_alloc int)
-            (mp_size int)
-            (mp_d (* unsigned-long))))
-
 ;; Section 3.6 "Memory Management" of the GMP manual states: "mpz_t
 ;; and mpq_t variables never reduce their allocated space. Normally
 ;; this is the best policy, since it avoids frequent
@@ -673,3 +667,47 @@ be (1+ COUNT)."
 (defmpqfun mpq-mul __gmpq_mul)
 
 (defmpqfun mpq-div __gmpq_div)
+
+;;; interface and installation
+
+(setf 
+ (symbol-function 'orig-mul) (symbol-function 'sb-bignum::multiply-bignums)
+ (symbol-function 'orig-gcd) (symbol-function 'sb-bignum::bignum-gcd)
+ (symbol-function 'orig-lcm) (symbol-function 'sb-kernel::two-arg-lcm)
+ (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt))
+
+(defun gmp-mul (a b)
+  (declare (optimize (speed 3) (space 3)))
+  (if (< (min (sb-bignum::%bignum-length a)
+              (sb-bignum::%bignum-length b))
+         6)
+      (orig-mul a b)
+      (mpz-mul a b)))
+
+(defun gmp-lcm (a b)
+  (declare (type integer a b))
+  (if (and (sb-int:fixnump a)
+           (sb-int:fixnump b))
+      (orig-lcm a b)
+      (mpz-lcm (bassert a) (bassert b))))
+
+(defun gmp-isqrt (n)
+  (declare (type unsigned-byte n))
+  (if (sb-int:fixnump n)
+      (orig-isqrt n)
+      (mpz-sqrt n)))
+
+
+
+(defun install-gmp-funs ()
+  (sb-ext:unlock-package "SB-BIGNUM")
+  (setf (symbol-function 'sb-bignum::multiply-bignums) (symbol-function 'gmp-mul))
+  (setf (symbol-function 'sb-bignum::bignum-gcd) (symbol-function 'mpz-gcd))
+  (sb-ext:lock-package "SB-BIGNUM")
+  (sb-ext:unlock-package "SB-KERNEL")
+  (setf (symbol-function 'sb-kernel::two-arg-lcm) (symbol-function 'gmp-lcm))
+  (sb-ext:lock-package "SB-KERNEL")
+  (sb-ext:unlock-package "COMMON-LISP")
+  (setf (symbol-function 'cl:isqrt) (symbol-function 'gmp-isqrt))
+  (sb-ext:lock-package "COMMON-LISP")
+  )
