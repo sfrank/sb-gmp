@@ -21,6 +21,7 @@
                      #:mpz-fib2
                      ;; random number generation
                      #:make-gmp-rstate
+                     #:make-gmp-rstate-lc
                      #:rand-seed
                      #:random-bitcount
                      #:random-int
@@ -512,6 +513,7 @@ be (1+ COUNT)."
             (mp_algdata (* t))))
 
 (declaim (inline __gmp_randinit_mt
+                 __gmp_randinit_lc_2exp
                  __gmp_randseed
                  __gmp_randseed_ui
                  __gmpz_urandomb
@@ -519,6 +521,12 @@ be (1+ COUNT)."
 
 (define-alien-routine __gmp_randinit_mt void
   (s (* (struct gmprandstate))))
+
+(define-alien-routine __gmp_randinit_lc_2exp void
+  (s (* (struct gmprandstate)))
+  (a (* (struct gmpint)))
+  (c unsigned-long)
+  (exp unsigned-long))
 
 (define-alien-routine __gmp_randseed void
   (s (* (struct gmprandstate)))
@@ -548,6 +556,18 @@ be (1+ COUNT)."
   (let* ((state (%make-gmp-rstate))
          (ref (gmp-rstate-ref state)))
     (__gmp_randinit_mt ref)
+    (sb-ext:finalize state (lambda () (free-alien ref)))
+    state))
+
+(defun make-gmp-rstate-lc (a c m2exp)
+  "Instantiate a state for the GMP random number generator."
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type c (unsigned-byte #.sb-vm:n-word-bits))
+  (check-type m2exp (unsigned-byte #.sb-vm:n-word-bits))
+  (let* ((state (%make-gmp-rstate))
+         (ref (gmp-rstate-ref state)))
+    (with-mpz-vars (((bassert a) ga))
+      (__gmp_randinit_lc_2exp ref (addr ga) c m2exp))
     (sb-ext:finalize state (lambda () (free-alien ref)))
     state))
 
@@ -691,11 +711,13 @@ be (1+ COUNT)."
 
 ;;; interface and installation
 
-(setf 
- (symbol-function 'orig-mul) (symbol-function 'sb-bignum::multiply-bignums)
- (symbol-function 'orig-gcd) (symbol-function 'sb-bignum::bignum-gcd)
- (symbol-function 'orig-lcm) (symbol-function 'sb-kernel::two-arg-lcm)
- (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (setf 
+   (symbol-function 'orig-mul) (symbol-function 'sb-bignum::multiply-bignums)
+   (symbol-function 'orig-gcd) (symbol-function 'sb-bignum::bignum-gcd)
+   (symbol-function 'orig-lcm) (symbol-function 'sb-kernel::two-arg-lcm)
+   (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt))
+  )
 
 (defun gmp-mul (a b)
   (declare (optimize (speed 3) (space 3)))
