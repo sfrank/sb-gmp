@@ -8,6 +8,7 @@
                      #:mpz-fdiv
                      #:mpz-tdiv
                      #:mpz-powm
+                     #:mpz-pow
                      #:mpz-gcd
                      #:mpz-lcm
                      #:mpz-sqrt
@@ -62,6 +63,12 @@
         (setf *features* (append *features* *gmp-features*) ))))
 
 ;;; types and initialization
+
+(define-alien-type nil
+    (struct gmpint
+            (mp_alloc int)
+            (mp_size int)
+            (mp_d (* unsigned-long))))
 
 ;; Section 3.6 "Memory Management" of the GMP manual states: "mpz_t
 ;; and mpq_t variables never reduce their allocated space. Normally
@@ -203,12 +210,18 @@ be (1+ COUNT)."
                           __gmpz_powm))
 
 
-(declaim (inline __gmpz_probab_prime_p
+(declaim (inline __gmpz_pow_ui
+                 __gmpz_probab_prime_p
                  __gmpz_fac_ui
                  __gmpz_2fac_ui
                  __gmpz_primorial_ui
                  __gmpz_bin_ui
                  __gmpz_fib2_ui))
+
+(define-alien-routine __gmpz_pow_ui void
+  (r (* (struct gmpint)))
+  (b (* (struct gmpint)))
+  (e unsigned-long))
 
 (define-alien-routine __gmpz_probab_prime_p int
   (n (* (struct gmpint)))
@@ -400,6 +413,14 @@ be (1+ COUNT)."
                        (rem size))
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_tdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
+
+(defun mpz-pow (base exp)
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (type sb-bignum::bignum-type base))
+  (check-type exp (unsigned-byte #.sb-vm:n-word-bits))
+  (with-gmp-mpz-results (rop)
+    (with-mpz-vars (((bassert base) gbase))
+      (__gmpz_pow_ui (addr rop) (addr gbase) exp))))
 
 (defgmpfun mpz-powm (base exp mod)
   (with-mpz-results ((rop (1+ (sb-bignum::%bignum-length mod))))
