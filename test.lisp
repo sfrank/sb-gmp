@@ -1,5 +1,3 @@
-(require :fiveam)
-
 (defpackage :sb-gmp-test (:use "COMMON-LISP" :it.bese.fiveam))
 
 (in-package :sb-gmp-test)
