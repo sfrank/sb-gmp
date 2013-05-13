@@ -44,7 +44,6 @@
   (- sb-vm:other-pointer-lowtag
      sb-vm:n-word-bytes))
 
-;; tested with GMB lib 5.1
 #-win32
 (sb-alien::load-shared-object "libgmp.so")
 #+win32
@@ -135,6 +134,22 @@ be (1+ COUNT)."
         (sb-bignum::%bignum-set b i value)
         (setf carry carry-tmp
               add 0)))))
+
+
+(declaim (inline blength bassert)
+         (ftype (function (integer) sb-bignum:bignum-index) blength))
+
+(defun blength (a)
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (if (sb-impl::fixnump a)
+      1
+      (sb-bignum::%bignum-length a)))
+
+(defun bassert (a)
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (if (sb-impl::fixnump a)
+      (sb-bignum:make-small-bignum a)
+      a))
 
 
 ;;;; rationals 
@@ -304,10 +319,12 @@ be (1+ COUNT)."
   (loop for (a ga) in pairs
         for length = (gensym "LENGTH")
         for plusp = (gensym "PLUSP")
+        for barg = (gensym "BARG")
         for arg = (gensym "ARG")
         collect `(,ga (struct gmpint)) into declares
-        collect `(,plusp (sb-bignum::%bignum-0-or-plusp ,a (sb-bignum::%bignum-length ,a))) into gmpinits
-        collect `(,arg (if ,plusp ,a (sb-bignum::negate-bignum ,a))) into gmpinits
+        collect `(,barg (bassert ,a)) into gmpinits
+        collect `(,plusp (sb-bignum::%bignum-0-or-plusp ,barg (sb-bignum::%bignum-length ,barg))) into gmpinits
+        collect `(,arg (if ,plusp ,barg (sb-bignum::negate-bignum ,barg))) into gmpinits
         collect `(,length (sb-bignum::%bignum-length ,arg)) into gmpinits
         collect arg into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
@@ -362,14 +379,14 @@ be (1+ COUNT)."
 (defmacro defgmpfun (name args &body body)
   `(defun ,name ,args
      (declare (optimize (speed 3) (space 3) (safety 0))
-              (type sb-bignum::bignum-type ,@args))
+              (type integer ,@args))
      ,@body))
 
 ;; SBCL/GMP functions
 
 (defgmpfun mpz-add (a b)
-  (with-mpz-results ((result (1+ (max (sb-bignum::%bignum-length a)
-                                      (sb-bignum::%bignum-length b)))))
+  (with-mpz-results ((result (1+ (max (blength a)
+                                      (blength b)))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_add (addr result) (addr ga) (addr gb)))))
 
@@ -420,7 +437,7 @@ be (1+ COUNT)."
            (type sb-bignum::bignum-type base))
   (check-type exp (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (rop)
-    (with-mpz-vars (((bassert base) gbase))
+    (with-mpz-vars ((base gbase))
       (__gmpz_pow_ui (addr rop) (addr gbase) exp))))
 
 (defgmpfun mpz-powm (base exp mod)
@@ -551,7 +568,7 @@ be (1+ COUNT)."
    :type (alien (* (struct gmprandstate))) :read-only t))
 
 (defun make-gmp-rstate ()
-  "Instantiate a state for the GMP random number generator."
+  "Instantiate a state for the GMP Mersenne-Twister random number generator."
   (declare (optimize (speed 3) (space 3)))
   (let* ((state (%make-gmp-rstate))
          (ref (gmp-rstate-ref state)))
@@ -560,13 +577,13 @@ be (1+ COUNT)."
     state))
 
 (defun make-gmp-rstate-lc (a c m2exp)
-  "Instantiate a state for the GMP random number generator."
+  "Instantiate a state for the GMP linear congruential random number generator."
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type c (unsigned-byte #.sb-vm:n-word-bits))
   (check-type m2exp (unsigned-byte #.sb-vm:n-word-bits))
   (let* ((state (%make-gmp-rstate))
          (ref (gmp-rstate-ref state)))
-    (with-mpz-vars (((bassert a) ga))
+    (with-mpz-vars ((a ga))
       (__gmp_randinit_lc_2exp ref (addr ga) c m2exp))
     (sb-ext:finalize state (lambda () (free-alien ref)))
     state))
@@ -609,19 +626,7 @@ be (1+ COUNT)."
 
 ;;; Rational functions
 
-(declaim (inline blength bassert lsize))
-(defun blength (a)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
-  (if (sb-impl::fixnump a)
-      1
-      (sb-bignum::%bignum-length a)))
-
-(defun bassert (a)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
-  (if (sb-impl::fixnump a)
-      (sb-bignum:make-small-bignum a)
-      a))
-
+(declaim (inline lsize))
 (defun lsize (minusp n)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (let ((length (sb-bignum::%bignum-length n)))
@@ -720,19 +725,22 @@ be (1+ COUNT)."
   )
 
 (defun gmp-mul (a b)
-  (declare (optimize (speed 3) (space 3)))
+  (declare (optimize (speed 3) (space 3))
+           (type sb-bignum::bignum-type a b))
   (if (< (min (sb-bignum::%bignum-length a)
               (sb-bignum::%bignum-length b))
          6)
       (orig-mul a b)
       (mpz-mul a b)))
 
-(defun gmp-lcm (a b)
-  (declare (type integer a b))
-  (if (and (sb-int:fixnump a)
-           (sb-int:fixnump b))
-      (orig-lcm a b)
-      (mpz-lcm (bassert a) (bassert b))))
+(locally (declare (optimize (speed 3) (space 3))
+                  (inline mpz-lcm))
+  (defun gmp-lcm (a b)
+    (declare (type integer a b))
+    (if (and (sb-int:fixnump a)
+             (sb-int:fixnump b))
+        (orig-lcm a b)
+        (mpz-lcm a b))))
 
 (defun gmp-isqrt (n)
   (declare (type unsigned-byte n))

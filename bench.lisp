@@ -202,4 +202,4 @@
 (defun bench ()
   (let ((*state* (sb-gmp:make-gmp-rstate)))
     (sb-gmp:rand-seed *state* 1234)
-    (bench-+)))
+    (bench-*)))
