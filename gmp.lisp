@@ -29,16 +29,13 @@
                      #:mpq-add
                      #:mpq-sub
                      #:mpq-mul
-                     #:mpq-div))
+                     #:mpq-div
+                     ;; (un)installer functions
+                     #:install-gmp-funs
+                     #:uninstall-gmp-funs
+                     ))
 
 (in-package :sb-gmp)
-
-;;;; NOTE: if not annotated otherwise, all functions expect a true
-;;;; SBCL bignum integer. This convention is not checked due to
-;;;; optimization settings since this is a module mostly targeted at
-;;;; compiler/runtime internal use. The function
-;;;; SB-BIGNUM:MAKE-SMALL-BIGNUM converts a FIXNUM to a bignum for
-;;;; these purposes.
 
 (defconstant +bignum-raw-area-offset+
   (- sb-vm:other-pointer-lowtag
@@ -468,54 +465,51 @@ be (1+ COUNT)."
 ;;; bignum length is known.
 
 (defun mpz-probably-prime-p (n &optional (reps 25))
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type sb-bignum::bignum-type n))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type reps fixnum)
   (with-mpz-vars ((n gn))
     (__gmpz_probab_prime_p (addr gn) reps)))
 
 (defun mpz-nextprime (a)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type sb-bignum::bignum-type a))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
   (with-gmp-mpz-results (prime)
     (with-mpz-vars ((a ga))
       (__gmpz_nextprime (addr prime) (addr ga)))))
 
 (defun mpz-fac (n)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type (unsigned-byte #.sb-vm:n-word-bits) n))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_fac_ui (addr fac) n)))
 
 #+:GMP5.1
 (defun mpz-2fac (n)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type (unsigned-byte #.sb-vm:n-word-bits) n))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
 
 #+:GMP5.1
 (defun mpz-primorial (n)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type (unsigned-byte #.sb-vm:n-word-bits) n))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (r)
     (__gmpz_primorial_ui (addr r) n)))
 
 (defun mpz-bin (n k)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type sb-bignum::bignum-type n)
-           (type (unsigned-byte #.sb-vm:n-word-bits) k))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type k (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (r)
     (with-mpz-vars ((n gn))
       (__gmpz_bin_ui (addr r) (addr gn) k))))
 
 (defun mpz-fib2 (n)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type (unsigned-byte #.sb-vm:n-word-bits) n))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
   ;; (let ((size (1+ (ceiling (* n (log 1.618034 2)) 64)))))
   ;; fibonacci number magnitude in bits is assymptotic to n(log_2 phi)
   ;; This is correct for the result but appears not to be enough for GMP
-  ;; during computation (memory access error), so use GMP-side allocation.    
+  ;; during computation (memory access error), so use GMP-side allocation.
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fibn fibn-1)
     (__gmpz_fib2_ui (addr fibn) (addr fibn-1) n)))
 
@@ -719,19 +713,31 @@ be (1+ COUNT)."
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (setf 
    (symbol-function 'orig-mul) (symbol-function 'sb-bignum::multiply-bignums)
+   (symbol-function 'orig-truncate) (symbol-function 'sb-bignum::bignum-truncate)
    (symbol-function 'orig-gcd) (symbol-function 'sb-bignum::bignum-gcd)
    (symbol-function 'orig-lcm) (symbol-function 'sb-kernel::two-arg-lcm)
    (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt))
   )
 
-(defun gmp-mul (a b)
-  (declare (optimize (speed 3) (space 3))
-           (type sb-bignum::bignum-type a b))
-  (if (< (min (sb-bignum::%bignum-length a)
-              (sb-bignum::%bignum-length b))
-         6)
-      (orig-mul a b)
-      (mpz-mul a b)))
+(locally (declare (inline mpz-mul))
+  (defun gmp-mul (a b)
+    (declare (optimize (speed 3) (space 3))
+             (type sb-bignum::bignum-type a b))
+    (if (< (min (sb-bignum::%bignum-length a)
+                (sb-bignum::%bignum-length b))
+           6)
+        (orig-mul a b)
+        (mpz-mul a b))))
+
+(locally (declare (inline mpz-tdiv))
+  (defun gmp-truncate (a b)
+    (declare (optimize (speed 3) (space 3))
+             (type sb-bignum::bignum-type a b))
+    (if (< (min (sb-bignum::%bignum-length a)
+                (sb-bignum::%bignum-length b))
+           3)
+        (orig-truncate a b)
+        (mpz-tdiv a b))))
 
 (locally (declare (optimize (speed 3) (space 3))
                   (inline mpz-lcm))
@@ -742,17 +748,20 @@ be (1+ COUNT)."
         (orig-lcm a b)
         (mpz-lcm a b))))
 
-(defun gmp-isqrt (n)
-  (declare (type unsigned-byte n))
-  (if (sb-int:fixnump n)
-      (orig-isqrt n)
-      (mpz-sqrt n)))
-
+(locally (declare (optimize (speed 3) (space 3))
+                  (sb-ext:muffle-conditions sb-ext:compiler-note)
+                  (inline mpz-sqrt))
+  (defun gmp-isqrt (n)
+    (declare (type unsigned-byte n))
+    (if (sb-int:fixnump n)
+        (orig-isqrt n)
+        (mpz-sqrt n))))
 
 
 (defun install-gmp-funs ()
   (sb-ext:unlock-package "SB-BIGNUM")
   (setf (symbol-function 'sb-bignum::multiply-bignums) (symbol-function 'gmp-mul))
+  (symbol-function 'sb-bignum::bignum-truncate) (symbol-function 'gmp-truncate)
   (setf (symbol-function 'sb-bignum::bignum-gcd) (symbol-function 'mpz-gcd))
   (sb-ext:lock-package "SB-BIGNUM")
   (sb-ext:unlock-package "SB-KERNEL")
@@ -760,5 +769,19 @@ be (1+ COUNT)."
   (sb-ext:lock-package "SB-KERNEL")
   (sb-ext:unlock-package "COMMON-LISP")
   (setf (symbol-function 'cl:isqrt) (symbol-function 'gmp-isqrt))
+  (sb-ext:lock-package "COMMON-LISP")
+  )
+
+(defun uninstall-gmp-funs ()
+  (sb-ext:unlock-package "SB-BIGNUM")
+  (setf (symbol-function 'sb-bignum::multiply-bignums) (symbol-function 'orig-mul))
+  (symbol-function 'sb-bignum::bignum-truncate) (symbol-function 'orig-truncate)
+  (setf (symbol-function 'sb-bignum::bignum-gcd) (symbol-function 'orig-gcd))
+  (sb-ext:lock-package "SB-BIGNUM")
+  (sb-ext:unlock-package "SB-KERNEL")
+  (setf (symbol-function 'sb-kernel::two-arg-lcm) (symbol-function 'orig-lcm))
+  (sb-ext:lock-package "SB-KERNEL")
+  (sb-ext:unlock-package "COMMON-LISP")
+  (setf (symbol-function 'cl:isqrt) (symbol-function 'orig-isqrt))
   (sb-ext:lock-package "COMMON-LISP")
   )
