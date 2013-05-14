@@ -31,12 +31,8 @@ documentation for the respective function specification.
 
 The transparent SBCL integration is activated by calling
 
-```Common Lisp
-(SB-GMP:INSTALL-GMP-FUNS)
-```
+    (SB-GMP:INSTALL-GMP-FUNS)
 
 in a similar way it can be deactivated via
 
-```Common Lisp
-(SB-GMP:UNINSTALL-GMP-FUNS)
-```
+    (SB-GMP:UNINSTALL-GMP-FUNS)
