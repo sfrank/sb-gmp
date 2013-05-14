@@ -708,7 +708,7 @@ be (1+ COUNT)."
 
 (defmpqfun mpq-div __gmpq_div)
 
-;;; interface and installation
+;;; SBCL interface and integration installation
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (setf 
@@ -716,8 +716,12 @@ be (1+ COUNT)."
    (symbol-function 'orig-truncate) (symbol-function 'sb-bignum::bignum-truncate)
    (symbol-function 'orig-gcd) (symbol-function 'sb-bignum::bignum-gcd)
    (symbol-function 'orig-lcm) (symbol-function 'sb-kernel::two-arg-lcm)
-   (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt))
-  )
+   (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt)
+   (symbol-function 'orig-two-arg-+) (symbol-function 'sb-kernel::two-arg-+)
+   (symbol-function 'orig-two-arg--) (symbol-function 'sb-kernel::two-arg--)
+   (symbol-function 'orig-two-arg-*) (symbol-function 'sb-kernel::two-arg-*)
+   (symbol-function 'orig-two-arg-/) (symbol-function 'sb-kernel::two-arg-/)
+   ))
 
 (locally (declare (inline mpz-mul))
   (defun gmp-mul (a b)
@@ -757,6 +761,46 @@ be (1+ COUNT)."
         (orig-isqrt n)
         (mpz-sqrt n))))
 
+;; rationals
+
+(locally (declare (inline mpq-add))
+  (defun gmp-two-arg-+ (x y)
+    (declare (optimize (speed 3) (space 3)))
+    (if (and (or (typep x 'ratio)
+                 (typep y 'ratio))
+             (rationalp y)
+             (rationalp x))
+        (mpq-add x y)
+        (orig-two-arg-+ x y))))
+
+(locally (declare (inline mpq-sub))
+  (defun gmp-two-arg-- (x y)
+    (declare (optimize (speed 3) (space 3)))
+    (if (and (or (typep x 'ratio)
+                 (typep y 'ratio))
+             (rationalp y)
+             (rationalp x))
+        (mpq-sub x y)
+        (orig-two-arg-- x y))))
+
+(locally (declare (inline mpq-mul))
+  (defun gmp-two-arg-* (x y)
+    (declare (optimize (speed 3) (space 3)))
+    (if (and (or (typep x 'ratio)
+                 (typep y 'ratio))
+             (rationalp y)
+             (rationalp x))
+        (mpq-mul x y)
+        (orig-two-arg-* x y))))
+
+(locally (declare (inline mpq-div))
+  (defun gmp-two-arg-/ (x y)
+    (declare (optimize (speed 3) (space 3)))
+    (if (and (rationalp x)
+             (rationalp y))
+        (mpq-div x y)
+        (orig-two-arg-/ x y))))
+
 
 (defun install-gmp-funs ()
   (sb-ext:unlock-package "SB-BIGNUM")
@@ -766,6 +810,10 @@ be (1+ COUNT)."
   (sb-ext:lock-package "SB-BIGNUM")
   (sb-ext:unlock-package "SB-KERNEL")
   (setf (symbol-function 'sb-kernel::two-arg-lcm) (symbol-function 'gmp-lcm))
+  (setf (symbol-function 'sb-kernel::two-arg-+) (symbol-function 'gmp-two-arg-+))
+  (setf (symbol-function 'sb-kernel::two-arg--) (symbol-function 'gmp-two-arg--))
+  (setf (symbol-function 'sb-kernel::two-arg-*) (symbol-function 'gmp-two-arg-*))
+  (setf (symbol-function 'sb-kernel::two-arg-/) (symbol-function 'gmp-two-arg-/))
   (sb-ext:lock-package "SB-KERNEL")
   (sb-ext:unlock-package "COMMON-LISP")
   (setf (symbol-function 'cl:isqrt) (symbol-function 'gmp-isqrt))
@@ -780,8 +828,13 @@ be (1+ COUNT)."
   (sb-ext:lock-package "SB-BIGNUM")
   (sb-ext:unlock-package "SB-KERNEL")
   (setf (symbol-function 'sb-kernel::two-arg-lcm) (symbol-function 'orig-lcm))
+  (setf (symbol-function 'sb-kernel::two-arg-+) (symbol-function 'orig-two-arg-+))
+  (setf (symbol-function 'sb-kernel::two-arg--) (symbol-function 'orig-two-arg--))
+  (setf (symbol-function 'sb-kernel::two-arg-*) (symbol-function 'orig-two-arg-*))
+  (setf (symbol-function 'sb-kernel::two-arg-/) (symbol-function 'orig-two-arg-/))
   (sb-ext:lock-package "SB-KERNEL")
   (sb-ext:unlock-package "COMMON-LISP")
   (setf (symbol-function 'cl:isqrt) (symbol-function 'orig-isqrt))
   (sb-ext:lock-package "COMMON-LISP")
   )
+

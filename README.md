@@ -14,6 +14,13 @@ So far only a few functions are transparently replace for SBCL, namely:
  - sb-kernel::two-arg-lcm
  - cl:isqrt
 
+and for making use of the GMP rational arithmetic:
+
+ - sb-kernel::two-arg-+
+ - sb-kernel::two-arg--
+ - sb-kernel::two-arg-*
+ - sb-kernel::two-arg-/
+
 Most of the other SBCL bignum routines rely on these function for the
 heavy computational lifting.
 
