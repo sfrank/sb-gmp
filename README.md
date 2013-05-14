@@ -6,7 +6,7 @@ GMP integration for SBCL
 This contrib enables the use of bignum computation routines from the
 GMP library for SBCL internal bignum calculations.
 
-So far only a few functions are transparently replace for SBCL, namely:
+Some functions can be transparently replaced within SBCL, namely:
 
  - sb-bignum:multiply-bignum
  - sb-bignum:bignum-truncate
@@ -21,7 +21,7 @@ and for making use of the GMP rational arithmetic:
  - sb-kernel::two-arg-*
  - sb-kernel::two-arg-/
 
-Most of the other SBCL bignum routines rely on these function for the
+Most of the other SBCL bignum routines rely on these functions for the
 heavy computational lifting.
 
 However, SB-GMP also provides easy and transparent access to several
