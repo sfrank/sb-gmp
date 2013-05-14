@@ -28,3 +28,15 @@ However, SB-GMP also provides easy and transparent access to several
 other functions of the GMP library and may be able to replace other
 parts of the SBCL bignum machinery in the future. Refer to the GMP
 documentation for the respective function specification.
+
+The transparent SBCL integration is activated by calling
+
+```Common Lisp
+(SB-GMP:INSTALL-GMP-FUNS)
+```
+
+in a similar way it can be deactivated via
+
+```Common Lisp
+(SB-GMP:UNINSTALL-GMP-FUNS)
+```
