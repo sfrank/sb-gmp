@@ -16,6 +16,7 @@
                      #:mpz-nextprime
                      #:mpz-fac
                      #:mpz-2fac
+                     #:mpz-mfac
                      #:mpz-primorial
                      #:mpz-bin
                      #:mpz-fib2
@@ -227,6 +228,7 @@ be (1+ COUNT)."
                  __gmpz_probab_prime_p
                  __gmpz_fac_ui
                  __gmpz_2fac_ui
+                 __gmpz_mfac_uiui
                  __gmpz_primorial_ui
                  __gmpz_bin_ui
                  __gmpz_fib2_ui))
@@ -248,6 +250,13 @@ be (1+ COUNT)."
 (define-alien-routine __gmpz_2fac_ui void
   (r (* (struct gmpint)))
   (a unsigned-long))
+
+#+:GMP5.1
+(define-alien-routine __gmpz_mfac_uiui void
+  (r (* (struct gmpint)))
+  (n unsigned-long)
+  (m unsigned-long))
+
 
 #+:GMP5.1
 (define-alien-routine __gmpz_primorial_ui void
@@ -488,6 +497,15 @@ be (1+ COUNT)."
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
+
+#+:GMP5.1
+(defun mpz-mfac (n m)
+  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
+  (check-type m (unsigned-byte #.sb-vm:n-word-bits))
+  (with-gmp-mpz-results (fac)
+    (__gmpz_mfac_uiui (addr fac) n m)))
+
 
 #+:GMP5.1
 (defun mpz-primorial (n)
