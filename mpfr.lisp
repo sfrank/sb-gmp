@@ -1,4 +1,19 @@
-(in-package :sb-gmp)
+(defpackage :sb-mpfr (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL")
+            (:export ;; parameters
+                     #:*mpfr-precision*
+                     #:*mpfr-rnd*
+                     #:*mpfr-base*
+                     ;; bignum float operations
+                     #:make-mpfr-float
+                     #:mpfr-float-to-string
+                     ;; random number generation
+                     ;; ...
+                     ;; (un)installer functions
+                     ;; #:install-mpfr-funs
+                     ;; #:uninstall-mpfr-funs
+                     ))
+
+(in-package :sb-mpfr)
 
 #-win32
 (sb-alien::load-shared-object "libmpfr.so")
@@ -39,9 +54,31 @@
 (define-alien-routine mpfr_clear void
   (x (* (struct mpfrfloat))))
 
+;;; conversion functions
+
+(define-alien-routine mpfr_set void
+  (x (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_set_ui void
+  (x (* (struct mpfrfloat)))
+  (op unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_set_si void
+  (x (* (struct mpfrfloat)))
+  (op long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_set_flt void
+  (x (* (struct mpfrfloat)))
+  (op float)
+  (rnd mpfr_rnd_enum))
+
 (define-alien-routine mpfr_set_d void
   (x (* (struct mpfrfloat)))
-  (d double-float)
+  (op double-float)
   (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_set_nan void
@@ -65,6 +102,14 @@
   (x (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
+(define-alien-routine mpfr_get_flt float
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_get_d double
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
 (define-alien-routine mpfr_free_str void
   (str (* char)))
 
@@ -73,6 +118,11 @@
   (str c-string)
   (base int)
   (rnd mpfr_rnd_enum))
+
+;;; arithmetic functions
+
+
+
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
 (defparameter *mpfr-rnd* :mpfr_rndn)
@@ -133,4 +183,3 @@
   (defun enable-fd-syntax (readtable)
     (set-dispatch-macro-character #\# #\M #'mpfr-reader readtable)))
 
-(with-output-to-string)
