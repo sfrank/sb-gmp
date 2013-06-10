@@ -121,8 +121,38 @@
 
 ;;; arithmetic functions
 
+(define-alien-routine mpfr_add void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_add_ui void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long))
+
+(define-alien-routine mpfr_add_si void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long))
+
+(define-alien-routine mpfr_add_d void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 double-float))
+
+(define-alien-routine mpfr_add_z void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmpint))))
+
+(define-alien-routine mpfr_add_q void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmprat))))
 
 
+;;; lisp interface
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
 (defparameter *mpfr-rnd* :mpfr_rndn)
