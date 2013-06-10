@@ -124,65 +124,81 @@
 (define-alien-routine mpfr_add void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_add_ui void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 unsigned-long))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_add_si void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 long))
+  (op2 long)
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_add_d void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 double-float))
+  (op2 double-float)
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_add_z void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct sb-gmp::gmpint))))
+  (op2 (* (struct sb-gmp::gmpint)))
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_add_q void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct sb-gmp::gmprat))))
+  (op2 (* (struct sb-gmp::gmprat)))
+  (rnd mpfr_rnd_enum))
 
 
 
 (define-alien-routine mpfr_mul void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_mul_ui void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 unsigned-long))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_mul_si void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 long))
+  (op2 long)
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_mul_d void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 double-float))
+  (op2 double-float)
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_mul_z void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct sb-gmp::gmpint))))
+  (op2 (* (struct sb-gmp::gmpint)))
+  (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_mul_q void
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct sb-gmp::gmprat))))
+  (op2 (* (struct sb-gmp::gmprat)))
+  (rnd mpfr_rnd_enum))
 
+(define-alien-routine mpfr_sqr void
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
 
 
 ;;; lisp interface
