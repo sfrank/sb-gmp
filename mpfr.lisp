@@ -152,6 +152,39 @@
   (op2 (* (struct sb-gmp::gmprat))))
 
 
+
+(define-alien-routine mpfr_mul void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_mul_ui void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long))
+
+(define-alien-routine mpfr_mul_si void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long))
+
+(define-alien-routine mpfr_mul_d void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 double-float))
+
+(define-alien-routine mpfr_mul_z void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmpint))))
+
+(define-alien-routine mpfr_mul_q void
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmprat))))
+
+
+
 ;;; lisp interface
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
