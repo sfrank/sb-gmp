@@ -121,85 +121,274 @@
 
 ;;; arithmetic functions
 
-(define-alien-routine mpfr_add void
+(define-alien-routine mpfr_add int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_add_ui void
+(define-alien-routine mpfr_add_ui int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 unsigned-long)
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_add_si void
+(define-alien-routine mpfr_add_si int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 long)
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_add_d void
+(define-alien-routine mpfr_add_d int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 double-float)
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_add_z void
+(define-alien-routine mpfr_add_z int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct sb-gmp::gmpint)))
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_add_q void
+(define-alien-routine mpfr_add_q int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct sb-gmp::gmprat)))
   (rnd mpfr_rnd_enum))
 
-
-
-(define-alien-routine mpfr_mul void
+(define-alien-routine mpfr_sub int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_mul_ui void
+(define-alien-routine mpfr_ui_sub int
+  (r (* (struct mpfrfloat)))
+  (op1 unsigned-long)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sub_ui int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 unsigned-long)
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_mul_si void
+(define-alien-routine mpfr_si_sub int
+  (r (* (struct mpfrfloat)))
+  (op1 long)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sub_si int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 long)
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_mul_d void
+(define-alien-routine mpfr_d_sub int
+  (r (* (struct mpfrfloat)))
+  (op1 double-float)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sub_d int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 double-float)
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_mul_z void
+(define-alien-routine mpfr_z_sub int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct sb-gmp::gmpint)))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sub_z int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct sb-gmp::gmpint)))
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_mul_q void
+(define-alien-routine mpfr_sub_q int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct sb-gmp::gmprat)))
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_sqr void
+(define-alien-routine mpfr_mul int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_ui int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_si int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_d int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 double-float)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_z int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmpint)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_q int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmprat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sqr int
   (r (* (struct mpfrfloat)))
   (op (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
+(define-alien-routine mpfr_div int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_ui_div int
+  (r (* (struct mpfrfloat)))
+  (op1 unsigned-long)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_ui int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_si_div int
+  (r (* (struct mpfrfloat)))
+  (op1 long)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_si int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_d_div int
+  (r (* (struct mpfrfloat)))
+  (op1 double-float)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_d int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 double-float)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_z int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmpint)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_q int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmprat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sqrt int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_sqrt_ui int
+  (r (* (struct mpfrfloat)))
+  (op unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_rec_sqrt int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_cbrt int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_root int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (k unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_pow int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_pow_ui int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_pow_si int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_pow_z int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmpint)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_ui_pow_ui int
+  (r (* (struct mpfrfloat)))
+  (op1 unsigned-long)
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_ui_pow int
+  (r (* (struct mpfrfloat)))
+  (op1 unsigned-long)
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_neg int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_abs int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_dim int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
 
 ;;; lisp interface
 
