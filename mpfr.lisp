@@ -390,55 +390,178 @@
   (op2 (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
+;;; special functions
+
+(defmacro define-onearg-mpfr-int (funs)
+  (loop for i in funs collect `(define-alien-routine ,i int
+                                 (r (* (struct mpfrfloat)))
+                                 (op (* (struct mpfrfloat)))
+                                 (rnd mpfr_rnd_enum))
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
+
+(define-onearg-mpfr-int
+    (mpfr_log
+     mpfr_log2
+     mpfr_log10
+     mpfr_exp
+     mpfr_exp2
+     mpfr_exp10
+     mpfr_cos
+     mpfr_sin
+     mpfr_tan
+     mpfr_sec
+     mpfr_csc
+     mpfr_cot
+     mpfr_acos
+     mpfr_asin
+     mpfr_atan
+     mpfr_cosh
+     mpfr_sinh
+     mpfr_tanh
+     mpfr_sech
+     mpfr_csch
+     mpfr_coth
+     mpfr_acosh
+     mpfr_asinh
+     mpfr_atanh
+     mpfr_log1p
+     mpfr_expm1
+     mpfr_eint
+     mpfr_li2
+     mpfr_gamma
+     mpfr_lngamma
+     mpfr_digamma
+     mpfr_zeta
+     mpfr_erf
+     mpfr_erfc
+     mpfr_j0
+     mpfr_j1
+     mpfr_y0
+     mpfr_y1
+     mpfr_ai))
+
+(defmacro define-twoarg-mpfr-int (funs)
+  (loop for i in funs collect `(define-alien-routine ,i int
+                                 (r (* (struct mpfrfloat)))
+                                 (op1 (* (struct mpfrfloat)))
+                                 (op2 (* (struct mpfrfloat)))
+                                 (rnd mpfr_rnd_enum))
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
+
+(define-twoarg-mpfr-int
+    (mpfr_sin_cos
+     mpfr_atan2
+     mpfr_sinh_cosh
+     mpfr_agm
+     mpfr_hypot))
+
+;; TODO: fac_ui, zeta_ui, jn, yn, fma, fms
+
+(defmacro define-const-mpfr-int (funs)
+  (loop for i in funs collect `(define-alien-routine ,i int
+                                 (r (* (struct mpfrfloat)))
+                                 (rnd mpfr_rnd_enum))
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
+
+(define-const-mpfr-int
+    (mpfr_const_log2
+     mpfr_const_pi
+     mpfr_const_euler
+     mpfr_const_catalan))
+
+;; TODO: _sum
+
+;;; comparison functions
+
 (define-alien-routine mpfr_cmpabs int
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat))))
 
-(define-alien-routine mpfr_nan_p boolean
-  (op (* (struct mpfrfloat))))
+(defmacro define-onearg-mpfr-bool (funs)
+  (loop for i in funs collect `(define-alien-routine ,i boolean
+                                 (r (* (struct mpfrfloat)))
+                                 (op (* (struct mpfrfloat))))
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
 
-(define-alien-routine mpfr_inf_p boolean
-  (op (* (struct mpfrfloat))))
-
-(define-alien-routine mpfr_number_p boolean
-  (op (* (struct mpfrfloat))))
-
-(define-alien-routine mpfr_zero_p boolean
-  (op (* (struct mpfrfloat))))
-
-(define-alien-routine mpfr_regular_p boolean
-  (op (* (struct mpfrfloat))))
+(define-onearg-mpfr-bool
+    (mpfr_nan_p
+     mpfr_inf_p
+     mpfr_number_p
+     mpfr_zero_p
+     mpfr_regular_p))
 
 (define-alien-routine mpfr_sgn int
   (op (* (struct mpfrfloat))))
 
-(define-alien-routine mpfr_greater_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+(defmacro define-twoarg-mpfr-bool (funs)
+  (loop for i in funs collect `(define-alien-routine ,i boolean
+                                 (r (* (struct mpfrfloat)))
+                                 (op1 (* (struct mpfrfloat)))
+                                 (op2 (* (struct mpfrfloat))))
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
 
-(define-alien-routine mpfr_greaterequal_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+(define-twoarg-mpfr-bool
+    (mpfr_greater_p
+     mpfr_greaterequal_p
+     mpfr_less_p
+     mpfr_lessequal_p
+     mpfr_equal_p
+     mpfr_lessgreater_p
+     mpfr_unordered_p))
 
-(define-alien-routine mpfr_less_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+;;; miscellaneous functions
 
-(define-alien-routine mpfr_lessequal_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+(defmacro define-mpfr-void (funs)
+  (loop for i in funs collect `(define-alien-routine ,i void)
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
 
-(define-alien-routine mpfr_equal_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+(define-mpfr-void
+    (mpfr_clear_underflow
+     mpfr_clear_overflow
+     mpfr_clear_divby0
+     mpfr_clear_nanflag
+     mpfr_clear_inexflag
+     mpfr_clear_erangeflag
+     mpfr_set_underflow
+     mpfr_set_overflow
+     mpfr_set_divby0
+     mpfr_set_nanflag
+     mpfr_set_inexflag
+     mpfr_set_erangeflag
+     mpfr_clear_flags))
 
-(define-alien-routine mpfr_lessgreater_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+(defmacro define-mpfr-bool (funs)
+  (loop for i in funs collect `(define-alien-routine ,i boolean)
+          into defines
+        finally (return `(progn
+                           (declaim (inline ,@funs))
+                           ,@defines))))
 
-(define-alien-routine mpfr_unordered_p boolean
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat))))
+(define-mpfr-bool
+    (mpfr_underflow_p
+     mpfr_overflow_p
+     mpfr_divby0_p
+     mpfr_nanflag_p
+     mpfr_inexflag_p
+     mpfr_erangeflag_p))
 
 ;;; lisp interface
 
