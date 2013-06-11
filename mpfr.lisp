@@ -390,6 +390,56 @@
   (op2 (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
+(define-alien-routine mpfr_cmpabs int
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_nan_p boolean
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_inf_p boolean
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_number_p boolean
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_zero_p boolean
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_regular_p boolean
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_sgn int
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_greater_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_greaterequal_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_less_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_lessequal_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_equal_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_lessgreater_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_unordered_p boolean
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
 ;;; lisp interface
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
