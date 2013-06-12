@@ -36,12 +36,12 @@
                      #:uninstall-gmp-funs
                      ;; special variables
                      #:*gmp-version*
-                     #:*gmp-enabled*
+                     #:*gmp-disabled*
                      ))
 
 (in-package :sb-gmp)
 
-(defparameter *gmp-enabled* t)
+(defparameter *gmp-disabled* nil)
 
 (defconstant +bignum-raw-area-offset+
   (- sb-vm:other-pointer-lowtag
@@ -751,9 +751,10 @@ be (1+ COUNT)."
   (defun gmp-mul (a b)
     (declare (optimize (speed 3) (space 3))
              (type sb-bignum::bignum-type a b))
-    (if (< (min (sb-bignum::%bignum-length a)
-                (sb-bignum::%bignum-length b))
-           6)
+    (if (or (< (min (sb-bignum::%bignum-length a)
+                    (sb-bignum::%bignum-length b))
+               6)
+            *gmp-disabled*)
         (orig-mul a b)
         (mpz-mul a b))))
 
@@ -761,9 +762,10 @@ be (1+ COUNT)."
   (defun gmp-truncate (a b)
     (declare (optimize (speed 3) (space 3))
              (type sb-bignum::bignum-type a b))
-    (if (< (min (sb-bignum::%bignum-length a)
-                (sb-bignum::%bignum-length b))
-           3)
+    (if (or (< (min (sb-bignum::%bignum-length a)
+                    (sb-bignum::%bignum-length b))
+               3)
+            *gmp-disabled*)
         (orig-truncate a b)
         (mpz-tdiv a b))))
 
@@ -771,8 +773,9 @@ be (1+ COUNT)."
                   (inline mpz-lcm))
   (defun gmp-lcm (a b)
     (declare (type integer a b))
-    (if (and (sb-int:fixnump a)
-             (sb-int:fixnump b))
+    (if (or (and (sb-int:fixnump a)
+                 (sb-int:fixnump b))
+            *gmp-disabled*)
         (orig-lcm a b)
         (mpz-lcm a b))))
 
@@ -781,7 +784,8 @@ be (1+ COUNT)."
                   (inline mpz-sqrt))
   (defun gmp-isqrt (n)
     (declare (type unsigned-byte n))
-    (if (sb-int:fixnump n)
+    (if (or (sb-int:fixnump n)
+            *gmp-disabled*)
         (orig-isqrt n)
         (mpz-sqrt n))))
 
@@ -793,7 +797,8 @@ be (1+ COUNT)."
     (if (and (or (typep x 'ratio)
                  (typep y 'ratio))
              (rationalp y)
-             (rationalp x))
+             (rationalp x)
+             (not *gmp-disabled*))
         (mpq-add x y)
         (orig-two-arg-+ x y))))
 
@@ -803,7 +808,8 @@ be (1+ COUNT)."
     (if (and (or (typep x 'ratio)
                  (typep y 'ratio))
              (rationalp y)
-             (rationalp x))
+             (rationalp x)
+             (not *gmp-disabled*))
         (mpq-sub x y)
         (orig-two-arg-- x y))))
 
@@ -813,7 +819,8 @@ be (1+ COUNT)."
     (if (and (or (typep x 'ratio)
                  (typep y 'ratio))
              (rationalp y)
-             (rationalp x))
+             (rationalp x)
+             (not *gmp-disabled*))
         (mpq-mul x y)
         (orig-two-arg-* x y))))
 
@@ -821,7 +828,8 @@ be (1+ COUNT)."
   (defun gmp-two-arg-/ (x y)
     (declare (optimize (speed 3) (space 3)))
     (if (and (rationalp x)
-             (rationalp y))
+             (rationalp y)
+             (not *gmp-disabled*))
         (mpq-div x y)
         (orig-two-arg-/ x y))))
 
