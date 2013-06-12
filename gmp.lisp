@@ -37,7 +37,6 @@
                      ;; special variables
                      #:*gmp-version*
                      #:*gmp-enabled*
-                     #:*gmp-installed*
                      ))
 
 (in-package :sb-gmp)
