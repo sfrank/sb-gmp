@@ -37,6 +37,7 @@
                      ;; special variables
                      #:*gmp-version*
                      #:*gmp-enabled*
+                     #:*gmp-installed*
                      ))
 
 (in-package :sb-gmp)
@@ -734,6 +735,7 @@ be (1+ COUNT)."
 ;;; SBCL interface and integration installation
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *gmp-installed* nil)
   (setf 
    (symbol-function 'orig-mul) (symbol-function 'sb-bignum::multiply-bignums)
    (symbol-function 'orig-truncate) (symbol-function 'sb-bignum::bignum-truncate)
@@ -830,6 +832,8 @@ be (1+ COUNT)."
 
 (defun install-gmp-funs ()
   (sb-thread:with-mutex (*gmp-mutex*)
+    (when *gmp-installed*
+      (uninstall-gmp-funs))
     (sb-ext:unlock-package "SB-BIGNUM")
     (setf (symbol-function 'sb-bignum::multiply-bignums) (symbol-function 'gmp-mul))
     (symbol-function 'sb-bignum::bignum-truncate) (symbol-function 'gmp-truncate)
@@ -844,10 +848,12 @@ be (1+ COUNT)."
     (sb-ext:lock-package "SB-KERNEL")
     (sb-ext:unlock-package "COMMON-LISP")
     (setf (symbol-function 'cl:isqrt) (symbol-function 'gmp-isqrt))
+    (setf *gmp-installed* t)
     (sb-ext:lock-package "COMMON-LISP")))
 
 (defun uninstall-gmp-funs ()
   (sb-thread:with-mutex (*gmp-mutex*)
+    (setf *gmp-installed* nil)
     (sb-ext:unlock-package "SB-BIGNUM")
     (setf (symbol-function 'sb-bignum::multiply-bignums) (symbol-function 'orig-mul))
     (symbol-function 'sb-bignum::bignum-truncate) (symbol-function 'orig-truncate)
@@ -864,5 +870,5 @@ be (1+ COUNT)."
     (setf (symbol-function 'cl:isqrt) (symbol-function 'orig-isqrt))
     (sb-ext:lock-package "COMMON-LISP")))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
+(eval-when (:load-toplevel :execute)
   (install-gmp-funs))
