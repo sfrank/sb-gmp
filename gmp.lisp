@@ -36,9 +36,12 @@
                      #:uninstall-gmp-funs
                      ;; special variables
                      #:*gmp-version*
+                     #:*gmp-enabled*
                      ))
 
 (in-package :sb-gmp)
+
+(defparameter *gmp-enabled* t)
 
 (defconstant +bignum-raw-area-offset+
   (- sb-vm:other-pointer-lowtag
@@ -860,3 +863,6 @@ be (1+ COUNT)."
     (sb-ext:unlock-package "COMMON-LISP")
     (setf (symbol-function 'cl:isqrt) (symbol-function 'orig-isqrt))
     (sb-ext:lock-package "COMMON-LISP")))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (install-gmp-funs))
