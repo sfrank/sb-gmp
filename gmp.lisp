@@ -47,7 +47,7 @@
 
 (in-package "SB-GMP")
 
-(defparameter *gmp-disabled* nil)
+(defvar *gmp-disabled* nil)
 
 (defconstant +bignum-raw-area-offset+
   (- sb-vm:other-pointer-lowtag
@@ -57,18 +57,16 @@
                     #+darwin "libgmp.dylib"
                     #+win32 "libgmp-10.dll")
 
-(defparameter *gmp-features* nil)
-
-(progn
-  (defparameter *gmp-version* (extern-alien "__gmp_version" c-string))
-  (if (or (null *gmp-version*)
-          (string<= *gmp-version* "5."))
-      (error "SB-GMP requires at least GMP version 5.0")
-      (progn
-        (push :GMP5.0 *gmp-features*)
-        (when (string>= *gmp-version* "5.1")
-          (push :GMP5.1 *gmp-features*))
-        (setf *features* (append *features* *gmp-features*) ))))
+(defvar *gmp-features* nil)
+(defvar *gmp-version* (extern-alien "__gmp_version" c-string))
+(if (or (null *gmp-version*)
+        (string<= *gmp-version* "5."))
+    (error "SB-GMP requires at least GMP version 5.0")
+    (progn
+      (pushnew :GMP5.0 *gmp-features*)
+      (when (string>= *gmp-version* "5.1")
+        (pushnew :GMP5.1 *gmp-features*))
+      (setf *features* (union *features* *gmp-features*) )))
 
 
 ;;; types and initialization
@@ -726,7 +724,7 @@ be (1+ COUNT)."
 
 ;;;; SBCL interface and integration installation
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *gmp-installed* nil)
+  (defvar *gmp-installed* nil)
   (setf 
    (symbol-function 'orig-mul) (symbol-function 'multiply-bignums)
    (symbol-function 'orig-truncate) (symbol-function 'bignum-truncate)
@@ -825,7 +823,7 @@ be (1+ COUNT)."
       (orig-two-arg-/ x y)))
 
 ;;; installation
-(defparameter *gmp-mutex*
+(defvar *gmp-mutex*
   (sb-thread:make-mutex :name "gmp-loader")
   "Mutex for installation from different threads.")
 
