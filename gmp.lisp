@@ -50,8 +50,14 @@
 (defvar *gmp-disabled* nil)
 
 (defconstant +bignum-raw-area-offset+
-  (- sb-vm:other-pointer-lowtag
-     sb-vm:n-word-bytes))
+  (- (* sb-vm:bignum-digits-offset sb-vm:n-word-bytes)
+     sb-vm:other-pointer-lowtag))
+
+(declaim (inline bignum-data-sap))
+(defun bignum-data-sap (x)
+  (declare (type bignum x))
+  (sb-sys:sap+ (sb-sys:int-sap (sb-kernel:get-lisp-obj-address x))
+               +bignum-raw-area-offset+))
 
 (load-shared-object #-(or win32 darwin) "libgmp.so"
                     #+darwin "libgmp.dylib"
@@ -302,9 +308,7 @@ be (1+ COUNT)."
           into resinits
         collect `(setf (slot ,gres 'mp_alloc) (%bignum-length ,res)
                        (slot ,gres 'mp_size) 0
-                       (slot ,gres 'mp_d) (sb-sys:int-sap
-                                           (- (sb-kernel:get-lisp-obj-address ,res)
-                                              +bignum-raw-area-offset+)))
+                       (slot ,gres 'mp_d) (bignum-data-sap ,res))
           into inits
         collect `(if (minusp (slot ,gres 'mp_size)) ; check for negative result
                      (z-to-bignum-neg ,res ,size)
@@ -337,9 +341,7 @@ be (1+ COUNT)."
                          (when (zerop (%bignum-ref ,arg (1- ,length)))
                            (decf ,length))
                          (if ,plusp ,length (- ,length)))
-                       (slot ,ga 'mp_d) (sb-sys:int-sap
-                                         (- (sb-kernel:get-lisp-obj-address ,arg)
-                                            +bignum-raw-area-offset+)))
+                       (slot ,ga 'mp_d) (bignum-data-sap ,arg))
           into gmpvarssetup
         finally (return
                   `(with-alien ,declares
@@ -659,16 +661,10 @@ be (1+ COUNT)."
              (sb-sys:with-pinned-objects (num den)
                (setf (slot (slot r 'mp_num) 'mp_size) 0
                      (slot (slot r 'mp_num) 'mp_alloc) size
-                     (slot (slot r 'mp_num) 'mp_d)
-                     (sb-sys:int-sap
-                      (- (sb-kernel:get-lisp-obj-address num)
-                         +bignum-raw-area-offset+)))
+                     (slot (slot r 'mp_num) 'mp_d) (bignum-data-sap num))
                (setf (slot (slot r 'mp_den) 'mp_size) 0
                      (slot (slot r 'mp_den) 'mp_alloc) size
-                     (slot (slot r 'mp_den) 'mp_d)
-                     (sb-sys:int-sap
-                      (- (sb-kernel:get-lisp-obj-address den)
-                         +bignum-raw-area-offset+)))
+                     (slot (slot r 'mp_den) 'mp_d) (bignum-data-sap den))
                (let* ((asign (minusp a))
                       (an (bassert (numerator a)))
                       (ad (bassert (denominator a)))
@@ -689,27 +685,19 @@ be (1+ COUNT)."
                        (setf (slot (slot arga 'mp_num) 'mp_size) anlen
                              (slot (slot arga 'mp_num) 'mp_alloc) (abs anlen)
                              (slot (slot arga 'mp_num) 'mp_d)
-                             (sb-sys:int-sap
-                              (- (sb-kernel:get-lisp-obj-address an)
-                                 +bignum-raw-area-offset+)))
+                             (bignum-data-sap an))
                        (setf (slot (slot arga 'mp_den) 'mp_size) adlen
                              (slot (slot arga 'mp_den) 'mp_alloc) (abs adlen)
                              (slot (slot arga 'mp_den) 'mp_d)
-                             (sb-sys:int-sap
-                              (- (sb-kernel:get-lisp-obj-address ad)
-                                 +bignum-raw-area-offset+)))
+                             (bignum-data-sap ad))
                        (setf (slot (slot argb 'mp_num) 'mp_size) bnlen
                              (slot (slot argb 'mp_num) 'mp_alloc) (abs bnlen)
                              (slot (slot argb 'mp_num) 'mp_d)
-                             (sb-sys:int-sap
-                              (- (sb-kernel:get-lisp-obj-address bn)
-                                 +bignum-raw-area-offset+)))
+                             (bignum-data-sap bn))
                        (setf (slot (slot argb 'mp_den) 'mp_size) bdlen
                              (slot (slot argb 'mp_den) 'mp_alloc) (abs bdlen)
                              (slot (slot argb 'mp_den) 'mp_d)
-                             (sb-sys:int-sap
-                              (- (sb-kernel:get-lisp-obj-address bd)
-                                 +bignum-raw-area-offset+)))
+                             (bignum-data-sap bd))
                        (,gmpfun (addr r) (addr arga) (addr argb)))))
                  (sb-kernel::build-ratio (if (minusp (slot (slot r 'mp_num) 'mp_size))
                                              (z-to-bignum-neg num size)
