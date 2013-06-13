@@ -60,21 +60,24 @@
   (sb-sys:sap+ (sb-sys:int-sap (sb-kernel:get-lisp-obj-address x))
                +bignum-raw-area-offset+))
 
-(load-shared-object #-(or win32 darwin) "libgmp.so"
-                    #+darwin "libgmp.dylib"
-                    #+win32 "libgmp-10.dll")
+(defun %load-gmp ()
+  (handler-case
+      (load-shared-object #-(or win32 darwin) "libgmp.so"
+                          #+darwin "libgmp.dylib"
+                          #+win32 "libgmp-10.dll"
+                          :dont-save t)
+    (error (e)
+      (warn "GMP not loaded (~a)" e)
+      (return-from %load-gmp nil)))
+  t)
 
 (defvar *gmp-features* nil)
-(defvar *gmp-version* (extern-alien "__gmp_version" c-string))
-(if (or (null *gmp-version*)
-        (string<= *gmp-version* "5."))
-    (error "SB-GMP requires at least GMP version 5.0")
-    (progn
-      (pushnew :GMP5.0 *gmp-features*)
-      (when (string>= *gmp-version* "5.1")
-        (pushnew :GMP5.1 *gmp-features*))
-      (setf *features* (union *features* *gmp-features*))))
+(defvar *gmp-version* nil)
 
+;; We load only the library right now to avoid undefined alien
+;; style warnings
+(eval-when (:load-toplevel :execute)
+  (%load-gmp))
 
 ;;; types and initialization
 (define-alien-type nil
@@ -490,35 +493,37 @@ be (1+ COUNT)."
   (with-gmp-mpz-results (fac)
     (__gmpz_fac_ui (addr fac) n)))
 
-(defun mpz-2fac (n)
+(defun %mpz-2fac (n)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
 
-(defun mpz-mfac (n m)
+(defun %mpz-mfac (n m)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (check-type m (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_mfac_uiui (addr fac) n m)))
 
-(defun mpz-primorial (n)
+(defun %mpz-primorial (n)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (r)
     (__gmpz_primorial_ui (addr r) n)))
 
-(unless (member :gmp5.1 *gmp-features*)
-  (macrolet ((stubify (name &rest arguments)
+(defun setup-5.1-stubs ()
+  (macrolet ((stubify (name implementation &rest arguments)
                `(setf (fdefinition ',name)
-                      (lambda ,arguments
-                        (declare (ignore ,@arguments))
-                        (error "~S is only available in GMP >= 5.1"
-                               ',name)))))
-    (stubify mpz-2fac n)
-    (stubify mpz-mfac n m)
-    (stubify mpz-primorial n)))
+                      (if (member :gmp5.1 *gmp-features*)
+                          (fdefinition ',implementation)
+                          (lambda ,arguments
+                            (declare (ignore ,@arguments))
+                            (error "~S is only available in GMP >= 5.1"
+                                   ',name))))))
+    (stubify mpz-2fac %mpz-2fac n)
+    (stubify mpz-mfac %mpz-mfac n m)
+    (stubify mpz-primorial %mpz-primorial n)))
 
 (defun mpz-bin (n k)
   (declare (optimize (speed 3) (space 3) (safety 0)))
@@ -861,5 +866,34 @@ be (1+ COUNT)."
         (def isqrt orig-isqrt)))
   (values))
 
+(defun load-gmp (&key (persistently t))
+  (setf *gmp-features* nil
+        *gmp-version* nil
+        *features* (set-difference *features* '(:gmp5.0 :gmp5.1)))
+  (when persistently
+    (pushnew 'load-gmp sb-ext:*init-hooks*)
+    (pushnew 'uninstall-gmp-funs sb-ext:*exit-hooks*))
+  (let ((success (%load-gmp)))
+    (when success
+      (setf *gmp-version* (extern-alien "__gmp_version" c-string)))
+    (cond ((null *gmp-version*))
+          ((string<= *gmp-version* "5.")
+           (warn "SB-GMP requires at least GMP version 5.0")
+           (setf success nil))
+          (t
+           (pushnew :gmp5.0 *gmp-features*)
+           (when (string>= *gmp-version* "5.1")
+             (pushnew :gmp5.1 *gmp-features*))
+           (setf *features* (union *features* *gmp-features*))))
+    (if success
+        (install-gmp-funs)
+        (uninstall-gmp-funs))
+    (setup-5.1-stubs)
+    success))
+
+(defun unload-gmp ()
+  (setf sb-ext:*init-hooks* (remove 'load-gmp sb-ext:*init-hooks*))
+  (uninstall-gmp-funs))
+
 (eval-when (:load-toplevel :execute)
-  (install-gmp-funs))
+  (load-gmp))
