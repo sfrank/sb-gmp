@@ -70,8 +70,8 @@
           (push :GMP5.1 *gmp-features*))
         (setf *features* (append *features* *gmp-features*) ))))
 
+
 ;;; types and initialization
-
 (define-alien-type nil
     (struct gmpint
             (mp_alloc int)
@@ -88,9 +88,7 @@
 ;; We can therefore allocate a bignum of sufficiant size and use the
 ;; space for GMP computations without the need for memory transfer
 ;; from C to Lisp space.
-
 (declaim (inline z-to-bignum z-to-bignum-neg))
-
 (defun z-to-bignum (b count)
   "Convert GMP integer in the buffer of a pre-allocated bignum."
   (declare (optimize (speed 3) (space 3) (safety 0))
@@ -109,11 +107,8 @@ bignum."
   (negate-bignum-in-place b)
   (%normalize-bignum b count))
 
-
 ;;; conversion functions that also copy from GMP to SBCL bignum space
-
 (declaim (inline gmp-z-to-bignum gmp-z-to-bignum-neg))
-
 (defun gmp-z-to-bignum (z b count)
   "Convert and copy a positive GMP integer into the buffer of a
 pre-allocated bignum. The allocated bignum-length must be (1+ COUNT)."
@@ -143,10 +138,9 @@ be (1+ COUNT)."
         (setf carry carry-tmp
               add 0)))))
 
-
 (declaim (inline blength bassert)
-         (ftype (function (integer) bignum-index) blength))
-
+         (ftype (function (integer) (values bignum-index &optional)) blength)
+         (ftype (function (integer) (values bignum &optional)) bassert))
 (defun blength (a)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (etypecase a
@@ -159,9 +153,7 @@ be (1+ COUNT)."
     (fixnum (make-small-bignum a))
     (t a)))
 
-
 ;;;; rationals 
-
 (define-alien-type nil
     (struct gmprat
             (mp_num (struct gmpint))
@@ -177,17 +169,15 @@ be (1+ COUNT)."
 ;; ultimately necessary since copying back into bignum space a the end
 ;; of the operation is about three times slower than the shared buffer
 ;; approach.
-(declaim (inline __gmpz_init
-                 __gmpz_clear))
-
+(declaim (inline __gmpz_init __gmpz_clear))
 (define-alien-routine __gmpz_init void
   (x (* (struct gmpint))))
 
 (define-alien-routine __gmpz_clear void
   (x (* (struct gmpint))))
 
+
 ;;; integer interface functions
-
 (defmacro define-twoarg-mpz-funs (funs)
   (loop for i in funs collect `(define-alien-routine ,i void
                                  (r (* (struct gmpint)))
@@ -218,6 +208,7 @@ be (1+ COUNT)."
                            (declaim (inline ,@funs))
                            ,@defines))))
 
+
 (define-twoarg-mpz-funs (__gmpz_sqrt
                          __gmpz_nextprime))
 
@@ -232,7 +223,6 @@ be (1+ COUNT)."
                           __gmpz_fdiv_qr
                           __gmpz_tdiv_qr
                           __gmpz_powm))
-
 
 (declaim (inline __gmpz_pow_ui
                  __gmpz_probab_prime_p
@@ -283,9 +273,8 @@ be (1+ COUNT)."
   (a (* (struct gmpint)))
   (b unsigned-long))
 
-
+
 ;; ratio functions
-
 (defmacro define-threearg-mpq-funs (funs)
   (loop for i in funs collect `(define-alien-routine ,i void
                                  (r (* (struct gmprat)))
@@ -301,11 +290,12 @@ be (1+ COUNT)."
                            __gmpq_mul
                            __gmpq_div))
 
+
+
 ;;;; SBCL interface
 
 ;;; utility macros for GMP mpz variable and result declaration and
 ;;; incarnation of associated SBCL bignums
-
 (defmacro with-mpz-results (pairs &body body)
   (loop for (gres size) in pairs
         for res = (gensym "RESULT")
@@ -390,15 +380,14 @@ be (1+ COUNT)."
                        (values ,@results))))))
 
 ;;; function definition and foreign function relationships
-
 (defmacro defgmpfun (name args &body body)
   `(defun ,name ,args
      (declare (optimize (speed 3) (space 3) (safety 0))
               (type integer ,@args))
      ,@body))
 
+
 ;; SBCL/GMP functions
-
 (defgmpfun mpz-add (a b)
   (with-mpz-results ((result (1+ (max (blength a)
                                       (blength b)))))
@@ -477,11 +466,10 @@ be (1+ COUNT)."
     (with-mpz-vars ((a ga))
       (__gmpz_sqrt (addr result) (addr ga)))))
 
-
+
 ;;; Functions that use GMP-side allocated integers and copy the result
 ;;; into a SBCL bignum at the end of the computation when the required
 ;;; bignum length is known.
-
 (defun mpz-probably-prime-p (n &optional (reps 25))
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type reps fixnum)
@@ -540,6 +528,7 @@ be (1+ COUNT)."
   (with-gmp-mpz-results (fibn fibn-1)
     (__gmpz_fib2_ui (addr fibn) (addr fibn-1) n)))
 
+
 ;;;; Random bignum (mpz) generation
 
 ;; we do not actually use the gestalt of the struct but need its size
@@ -643,8 +632,8 @@ be (1+ COUNT)."
       (with-mpz-vars ((b gb))
         (__gmpz_urandomm (addr result) ref (addr gb))))))
 
+
 ;;; Rational functions
-
 (declaim (inline lsize))
 (defun lsize (minusp n)
   (declare (optimize (speed 3) (space 3) (safety 0)))
@@ -726,15 +715,12 @@ be (1+ COUNT)."
                                        (z-to-bignum den size)))))))))
 
 (defmpqfun mpq-add __gmpq_add)
-
 (defmpqfun mpq-sub __gmpq_sub)
-
 (defmpqfun mpq-mul __gmpq_mul)
-
 (defmpqfun mpq-div __gmpq_div)
 
-;;; SBCL interface and integration installation
-
+
+;;;; SBCL interface and integration installation
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *gmp-installed* nil)
   (setf 
@@ -749,6 +735,7 @@ be (1+ COUNT)."
    (symbol-function 'orig-two-arg-/) (symbol-function 'sb-kernel:two-arg-/)
    ))
 
+;;; integers
 (locally (declare (inline mpz-mul))
   (defun gmp-mul (a b)
     (declare (optimize (speed 3) (space 3))
@@ -791,8 +778,7 @@ be (1+ COUNT)."
         (orig-isqrt n)
         (mpz-sqrt n))))
 
-;; rationals
-
+;;; rationals
 (locally (declare (inline mpq-add))
   (defun gmp-two-arg-+ (x y)
     (declare (optimize (speed 3) (space 3)))
@@ -835,6 +821,7 @@ be (1+ COUNT)."
         (mpq-div x y)
         (orig-two-arg-/ x y))))
 
+;;; installation
 (defparameter *gmp-mutex*
   (sb-thread:make-mutex :name "gmp-loader")
   "Mutex for installation from different threads.")
