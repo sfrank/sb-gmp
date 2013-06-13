@@ -53,10 +53,9 @@
   (- sb-vm:other-pointer-lowtag
      sb-vm:n-word-bytes))
 
-#-win32
-(load-shared-object "libgmp.so")
-#+win32
-(load-shared-object "libgmp-10.dll")
+(load-shared-object #-(or win32 darwin) "libgmp.so"
+                    #+darwin "libgmp.dylib"
+                    #+win32 "libgmp-10.dll")
 
 (defparameter *gmp-features* nil)
 
