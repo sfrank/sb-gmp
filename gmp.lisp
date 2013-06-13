@@ -332,7 +332,7 @@ be (1+ COUNT)."
         collect `(,ga (struct gmpint)) into declares
         collect `(,barg (bassert ,a)) into gmpinits
         collect `(,plusp (%bignum-0-or-plusp ,barg (%bignum-length ,barg))) into gmpinits
-        collect `(,arg (if ,plusp ,barg (negate-bignum ,barg))) into gmpinits
+        collect `(,arg (if ,plusp ,barg (negate-bignum ,barg nil))) into gmpinits
         collect `(,length (%bignum-length ,arg)) into gmpinits
         collect arg into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
@@ -671,9 +671,9 @@ be (1+ COUNT)."
                       (bn (bassert (numerator b)))
                       (bd (bassert (denominator b))))
                  (when asign
-                   (negate-bignum-in-place an))
+                   (setf an (negate-bignum an nil)))
                  (when bsign
-                   (negate-bignum-in-place bn))
+                   (setf bn (negate-bignum bn nil)))
                  (let* ((anlen (lsize asign an))
                         (adlen (lsize NIL ad))
                         (bnlen (lsize bsign bn))
