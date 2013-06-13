@@ -100,7 +100,7 @@
            (type bignum-index count))
   (if (zerop count)
       0
-      (%normalize-bignum b count)))
+      (the unsigned-byte (%normalize-bignum b count))))
 
 (defun z-to-bignum-neg (b count)
   "Convert to twos complement int the buffer of a pre-allocated
@@ -109,7 +109,7 @@ bignum."
            (type bignum-type b)
            (type bignum-index count))
   (negate-bignum-in-place b)
-  (%normalize-bignum b count))
+  (the (integer * 0) (%normalize-bignum b count)))
 
 ;;; conversion functions that also copy from GMP to SBCL bignum space
 (declaim (inline gmp-z-to-bignum gmp-z-to-bignum-neg))
