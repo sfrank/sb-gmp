@@ -835,7 +835,8 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-- gmp-two-arg--)
         (def sb-kernel:two-arg-* gmp-two-arg-*)
         (def sb-kernel:two-arg-/ gmp-two-arg-/)
-        (def isqrt gmp-isqrt))))
+        (def isqrt gmp-isqrt)))
+  (values))
 
 (defun uninstall-gmp-funs ()
   (with-package-locks-ignored
@@ -850,7 +851,8 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-- orig-two-arg--)
         (def sb-kernel:two-arg-* orig-two-arg-*)
         (def sb-kernel:two-arg-/ orig-two-arg-/)
-        (def isqrt orig-isqrt))))
+        (def isqrt orig-isqrt)))
+  (values))
 
 (eval-when (:load-toplevel :execute)
   (install-gmp-funs))
