@@ -1,7 +1,7 @@
-(defpackage "SB-GMP-TEST"
+(defpackage "SB-GMP-TESTS"
   (:use "COMMON-LISP" "SB-GMP" "SB-RT"))
 
-(in-package "SB-GMP-TEST")
+(in-package "SB-GMP-TESTS")
 
 (defparameter *state* (make-gmp-rstate))
 (rand-seed *state* 1234)
