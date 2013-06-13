@@ -6,7 +6,8 @@
 
 (in-suite sb-gmp-suite)
 
-(sb-gmp:uninstall-gmp-funs)
+;; Ensure to execute this, now that SB-GMP activates automatically!!!
+(sb-gmp:uninstall-gmp-funs) 
 
 (defparameter *state* (sb-gmp:make-gmp-rstate))
 (sb-gmp:rand-seed *state* 1234)
