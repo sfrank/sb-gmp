@@ -2,8 +2,8 @@
   (:use "COMMON-LISP" "SB-ALIEN" "SB-BIGNUM")
   ;; we need a few very internal symbols
   (:import-from "SB-BIGNUM"
-                 "%BIGNUM-0-OR-PLUSP" "%NORMALIZE-BIGNUM"
-                 "NEGATE-BIGNUM-IN-PLACE")
+                "%BIGNUM-0-OR-PLUSP" "%NORMALIZE-BIGNUM"
+                "NEGATE-BIGNUM-IN-PLACE")
   (:export
    ;; bignum integer operations
    #:mpz-add
@@ -72,7 +72,7 @@
       (pushnew :GMP5.0 *gmp-features*)
       (when (string>= *gmp-version* "5.1")
         (pushnew :GMP5.1 *gmp-features*))
-      (setf *features* (union *features* *gmp-features*) )))
+      (setf *features* (union *features* *gmp-features*))))
 
 
 ;;; types and initialization
@@ -504,7 +504,6 @@ be (1+ COUNT)."
   (check-type m (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_mfac_uiui (addr fac) n m)))
-
 
 #+GMP5.1
 (defun mpz-primorial (n)
