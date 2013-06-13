@@ -21,6 +21,7 @@
    #:mpz-probably-prime-p
    #:mpz-nextprime
    #:mpz-fac
+   ;; Following three are GMP >= 5.1 only
    #:mpz-2fac
    #:mpz-mfac
    #:mpz-primorial
@@ -250,19 +251,15 @@ be (1+ COUNT)."
   (r (* (struct gmpint)))
   (a unsigned-long))
 
-#+GMP5.1
 (define-alien-routine __gmpz_2fac_ui void
   (r (* (struct gmpint)))
   (a unsigned-long))
 
-#+GMP5.1
 (define-alien-routine __gmpz_mfac_uiui void
   (r (* (struct gmpint)))
   (n unsigned-long)
   (m unsigned-long))
 
-
-#+GMP5.1
 (define-alien-routine __gmpz_primorial_ui void
   (r (* (struct gmpint)))
   (n unsigned-long))
@@ -493,14 +490,12 @@ be (1+ COUNT)."
   (with-gmp-mpz-results (fac)
     (__gmpz_fac_ui (addr fac) n)))
 
-#+GMP5.1
 (defun mpz-2fac (n)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
 
-#+GMP5.1
 (defun mpz-mfac (n m)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
@@ -508,12 +503,22 @@ be (1+ COUNT)."
   (with-gmp-mpz-results (fac)
     (__gmpz_mfac_uiui (addr fac) n m)))
 
-#+GMP5.1
 (defun mpz-primorial (n)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (r)
     (__gmpz_primorial_ui (addr r) n)))
+
+(unless (member :gmp5.1 *gmp-features*)
+  (macrolet ((stubify (name &rest arguments)
+               `(setf (fdefinition ',name)
+                      (lambda ,arguments
+                        (declare (ignore ,@arguments))
+                        (error "~S is only available in GMP >= 5.1"
+                               ',name)))))
+    (stubify mpz-2fac n)
+    (stubify mpz-mfac n m)
+    (stubify mpz-primorial n)))
 
 (defun mpz-bin (n k)
   (declare (optimize (speed 3) (space 3) (safety 0)))
