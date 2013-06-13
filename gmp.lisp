@@ -44,6 +44,9 @@
    ;; special variables
    #:*gmp-version*
    #:*gmp-disabled*
+   ;; *features*
+   #:gmp5.0
+   #:gmp5.1
    ))
 
 (in-package "SB-GMP")
@@ -515,7 +518,7 @@ be (1+ COUNT)."
 (defun setup-5.1-stubs ()
   (macrolet ((stubify (name implementation &rest arguments)
                `(setf (fdefinition ',name)
-                      (if (member :gmp5.1 *gmp-features*)
+                      (if (member 'gmp5.1 *gmp-features*)
                           (fdefinition ',implementation)
                           (lambda ,arguments
                             (declare (ignore ,@arguments))
@@ -869,7 +872,7 @@ be (1+ COUNT)."
 (defun load-gmp (&key (persistently t))
   (setf *gmp-features* nil
         *gmp-version* nil
-        *features* (set-difference *features* '(:gmp5.0 :gmp5.1)))
+        *features* (set-difference *features* '(gmp5.0 gmp5.1)))
   (when persistently
     (pushnew 'load-gmp sb-ext:*init-hooks*)
     (pushnew 'uninstall-gmp-funs sb-ext:*exit-hooks*))
@@ -881,9 +884,9 @@ be (1+ COUNT)."
            (warn "SB-GMP requires at least GMP version 5.0")
            (setf success nil))
           (t
-           (pushnew :gmp5.0 *gmp-features*)
+           (pushnew gmp5.0 *gmp-features*)
            (when (string>= *gmp-version* "5.1")
-             (pushnew :gmp5.1 *gmp-features*))
+             (pushnew gmp5.1 *gmp-features*))
            (setf *features* (union *features* *gmp-features*))))
     (if success
         (install-gmp-funs)
