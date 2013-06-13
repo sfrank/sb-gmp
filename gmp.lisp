@@ -829,8 +829,6 @@ be (1+ COUNT)."
 
 (defun install-gmp-funs ()
   (sb-thread:with-mutex (*gmp-mutex*)
-    (when *gmp-installed*
-      (uninstall-gmp-funs))
     (sb-ext:unlock-package "SB-BIGNUM")
     (setf (symbol-function 'sb-bignum:multiply-bignums) (symbol-function 'gmp-mul))
     (symbol-function 'sb-bignum:bignum-truncate) (symbol-function 'gmp-truncate)
