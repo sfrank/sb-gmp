@@ -723,19 +723,24 @@ be (1+ COUNT)."
 
 
 ;;;; SBCL interface and integration installation
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *gmp-installed* nil)
-  (setf 
-   (symbol-function 'orig-mul) (symbol-function 'multiply-bignums)
-   (symbol-function 'orig-truncate) (symbol-function 'bignum-truncate)
-   (symbol-function 'orig-gcd) (symbol-function 'bignum-gcd)
-   (symbol-function 'orig-lcm) (symbol-function 'sb-kernel:two-arg-lcm)
-   (symbol-function 'orig-isqrt) (symbol-function 'cl:isqrt)
-   (symbol-function 'orig-two-arg-+) (symbol-function 'sb-kernel:two-arg-+)
-   (symbol-function 'orig-two-arg--) (symbol-function 'sb-kernel:two-arg--)
-   (symbol-function 'orig-two-arg-*) (symbol-function 'sb-kernel:two-arg-*)
-   (symbol-function 'orig-two-arg-/) (symbol-function 'sb-kernel:two-arg-/)
-   ))
+(defvar *gmp-installed* nil)
+(macrolet ((def (name original)
+             (let ((special (intern (format nil "*~A-FUNCTION*" name))))
+               `(progn
+                  (declaim (type function ,special)
+                           (inline name))
+                  (defvar ,special (symbol-function ',original))
+                  (defun ,name (&rest args)
+                    (apply (load-time-value ,special t) args))))))
+  (def orig-mul multiply-bignums)
+  (def orig-truncate bignum-truncate)
+  (def orig-gcd bignum-gcd)
+  (def orig-lcm sb-kernel:two-arg-lcm)
+  (def orig-isqrt isqrt)
+  (def orig-two-arg-+ sb-kernel:two-arg-+)
+  (def orig-two-arg-- sb-kernel:two-arg--)
+  (def orig-two-arg-* sb-kernel:two-arg-*)
+  (def orig-two-arg-/ sb-kernel:two-arg-/))
 
 ;;; integers
 (defun gmp-mul (a b)
