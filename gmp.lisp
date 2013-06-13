@@ -838,7 +838,7 @@ be (1+ COUNT)."
   "Mutex for installation from different threads.")
 
 (defun install-gmp-funs ()
-  (sb-thread:with-mutex (*gmp-mutex*)
+  (sb-thread:with-recursive-lock (*gmp-mutex*)
     (when *gmp-installed*
       (uninstall-gmp-funs))
     (sb-ext:unlock-package "SB-BIGNUM")
@@ -859,7 +859,7 @@ be (1+ COUNT)."
     (sb-ext:lock-package "COMMON-LISP")))
 
 (defun uninstall-gmp-funs ()
-  (sb-thread:with-mutex (*gmp-mutex*)
+  (sb-thread:with-recursive-lock (*gmp-mutex*)
     (setf *gmp-installed* nil)
     (sb-ext:unlock-package "SB-BIGNUM")
     (setf (symbol-function 'sb-bignum::multiply-bignums) (symbol-function 'orig-mul))
