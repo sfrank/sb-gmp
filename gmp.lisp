@@ -830,6 +830,7 @@ be (1+ COUNT)."
            (inline mpq-div))
   (if (and (rationalp x)
            (rationalp y)
+           (not (eql y 0))
            (not *gmp-disabled*))
       (mpq-div x y)
       (orig-two-arg-/ x y)))
