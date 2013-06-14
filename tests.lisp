@@ -93,7 +93,7 @@
 (define-gmp-test (mpz-add :repeat 7 :limbs (+ (random #xFFFFF) 2))
   (test-n-cases '+ 'mpz-add
                     (gen-mpz :limbs limbs :sign t)
-                    (gen-mpz :limbs limbs :sign t))(dotimes (i 5)))
+                    (gen-mpz :limbs limbs :sign t)))
 
 (define-gmp-test (mpz-sub :repeat 7 :limbs (+ (random #x1FFFF) 2))
   (test-n-cases '- 'mpz-sub
