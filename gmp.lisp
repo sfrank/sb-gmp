@@ -49,9 +49,6 @@
    ;; special variables
    #:*gmp-version*
    #:*gmp-disabled*
-   ;; *features*
-   #:gmp5.0
-   #:gmp5.1
    ))
 
 (in-package "SB-GMP")
@@ -88,7 +85,6 @@
 
 
 ;;; types and initialization
-
 (define-alien-type nil
     (struct gmpint
             (mp_alloc int)
@@ -105,7 +101,6 @@
 ;; We can therefore allocate a bignum of sufficiant size and use the
 ;; space for GMP computations without the need for memory transfer
 ;; from C to Lisp space.
-
 (declaim (inline z-to-bignum z-to-bignum-neg))
 
 (defun z-to-bignum (b count)
@@ -127,7 +122,6 @@ bignum."
   (the (integer * 0) (%normalize-bignum b count)))
 
 ;;; conversion functions that also copy from GMP to SBCL bignum space
-
 (declaim (inline gmp-z-to-bignum gmp-z-to-bignum-neg))
 
 (defun gmp-z-to-bignum (z b count)
@@ -153,16 +147,16 @@ be (1+ COUNT)."
     (declare (type (mod 2) carry add))
     (dotimes (i count b)
       (multiple-value-bind (value carry-tmp)
-          (%add-with-carry 
+          (%add-with-carry
            (%lognot (deref z i)) add carry)
         (%bignum-set b i value)
         (setf carry carry-tmp
               add 0)))))
 
-
 (declaim (inline blength bassert)
          (ftype (function (integer) (values bignum-index &optional)) blength)
          (ftype (function (integer) (values bignum &optional)) bassert))
+
 (defun blength (a)
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (etypecase a
@@ -175,8 +169,7 @@ be (1+ COUNT)."
     (fixnum (make-small-bignum a))
     (t a)))
 
-;;;; rationals 
-
+;;;; rationals
 (define-alien-type nil
     (struct gmprat
             (mp_num (struct gmpint))
@@ -201,7 +194,6 @@ be (1+ COUNT)."
 
 
 ;;; integer interface functions
-
 (defmacro define-twoarg-mpz-funs (funs)
   (loop for i in funs collect `(define-alien-routine ,i void
                                  (r (* (struct gmpint)))
@@ -248,7 +240,6 @@ be (1+ COUNT)."
                           __gmpz_tdiv_qr
                           __gmpz_powm))
 
-
 (declaim (inline __gmpz_pow_ui
                  __gmpz_probab_prime_p
                  __gmpz_fac_ui
@@ -271,19 +262,15 @@ be (1+ COUNT)."
   (r (* (struct gmpint)))
   (a unsigned-long))
 
-#+:GMP5.1
 (define-alien-routine __gmpz_2fac_ui void
   (r (* (struct gmpint)))
   (a unsigned-long))
 
-#+:GMP5.1
 (define-alien-routine __gmpz_mfac_uiui void
   (r (* (struct gmpint)))
   (n unsigned-long)
   (m unsigned-long))
 
-
-#+:GMP5.1
 (define-alien-routine __gmpz_primorial_ui void
   (r (* (struct gmpint)))
   (n unsigned-long))
@@ -300,7 +287,6 @@ be (1+ COUNT)."
 
 
 ;; ratio functions
-
 (defmacro define-threearg-mpq-funs (funs)
   (loop for i in funs collect `(define-alien-routine ,i void
                                  (r (* (struct gmprat)))
@@ -316,13 +302,11 @@ be (1+ COUNT)."
                            __gmpq_mul
                            __gmpq_div))
 
-
 
 ;;;; SBCL interface
 
 ;;; utility macros for GMP mpz variable and result declaration and
 ;;; incarnation of associated SBCL bignums
-
 (defmacro with-mpz-results (pairs &body body)
   (loop for (gres size) in pairs
         for res = (gensym "RESULT")
@@ -359,7 +343,7 @@ be (1+ COUNT)."
         collect `(,length (%bignum-length ,arg)) into gmpinits
         collect arg into vars
         collect `(setf (slot ,ga 'mp_alloc) ,length
-                       (slot ,ga 'mp_size) 
+                       (slot ,ga 'mp_size)
                        (progn ;; handle twos complements/ulong limbs mismatch
                          (when (zerop (%bignum-ref ,arg (1- ,length)))
                            (decf ,length))
@@ -372,7 +356,6 @@ be (1+ COUNT)."
                        (sb-sys:with-pinned-objects ,vars
                          ,@gmpvarssetup
                          ,@body))))))
-
 
 (defmacro with-gmp-mpz-results (resultvars &body body)
   (loop for gres in resultvars
@@ -387,7 +370,7 @@ be (1+ COUNT)."
           into resinits
         collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
                                 (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res ,size)
-                                (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size))) 
+                                (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size)))
           into copylimbs
         collect `(__gmpz_clear (addr ,gres)) into clears
         collect res into results
@@ -404,10 +387,9 @@ be (1+ COUNT)."
                        (values ,@results))))))
 
 ;;; function definition and foreign function relationships
-
 (defmacro defgmpfun (name args &body body)
   `(progn
-     (declaim (sb-ext:maybe-inline name))
+     (declaim (sb-ext:maybe-inline ,name))
      (defun ,name ,args
        (declare (optimize (speed 3) (space 3) (safety 0))
                 (type integer ,@args))
@@ -415,7 +397,6 @@ be (1+ COUNT)."
 
 
 ;; SBCL/GMP functions
-
 (defgmpfun mpz-add (a b)
   (with-mpz-results ((result (1+ (max (blength a)
                                       (blength b)))))
@@ -501,7 +482,6 @@ be (1+ COUNT)."
 ;;; Functions that use GMP-side allocated integers and copy the result
 ;;; into a SBCL bignum at the end of the computation when the required
 ;;; bignum length is known.
-
 (defun mpz-probably-prime-p (n &optional (reps 25))
   (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type reps fixnum)
@@ -542,7 +522,7 @@ be (1+ COUNT)."
 (defun setup-5.1-stubs ()
   (macrolet ((stubify (name implementation &rest arguments)
                `(setf (fdefinition ',name)
-                      (if (member 'gmp5.1 *gmp-features*)
+                      (if (member :sb-gmp-5.1 *gmp-features*)
                           (fdefinition ',implementation)
                           (lambda ,arguments
                             (declare (ignore ,@arguments))
@@ -605,12 +585,12 @@ be (1+ COUNT)."
   (sd unsigned-long))
 
 (define-alien-routine __gmpz_urandomb void
-  (r (* (struct gmpint)))  
+  (r (* (struct gmpint)))
   (s (* (struct gmprandstate)))
   (bcnt unsigned-long))
 
 (define-alien-routine __gmpz_urandomm void
-  (r (* (struct gmpint)))  
+  (r (* (struct gmpint)))
   (s (* (struct gmprandstate)))
   (n (* (struct gmpint))))
 
@@ -662,7 +642,6 @@ be (1+ COUNT)."
     (with-mpz-results ((result (+ (ceiling bitcount sb-vm:n-word-bits) 2)))
       (__gmpz_urandomb (addr result) ref bitcount))))
 
-
 (defun random-int (state boundary)
   "Return a random integer in the range 0..(boundary - 1)."
   (declare (optimize (speed 3) (space 3) (safety 0)))
@@ -686,7 +665,7 @@ be (1+ COUNT)."
 
 (defmacro defmpqfun (name gmpfun)
   `(progn
-     (declaim (sb-ext:maybe-inline name))
+     (declaim (sb-ext:maybe-inline ,name))
      (defun ,name (a b)
        (declare (optimize (speed 3) (space 3) (safety 0)))
        (let ((size (+ (max (blength (numerator a))
@@ -745,11 +724,8 @@ be (1+ COUNT)."
                                            (z-to-bignum den size)))))))))))
 
 (defmpqfun mpq-add __gmpq_add)
-
 (defmpqfun mpq-sub __gmpq_sub)
-
 (defmpqfun mpq-mul __gmpq_mul)
-
 (defmpqfun mpq-div __gmpq_div)
 
 
@@ -758,7 +734,7 @@ be (1+ COUNT)."
              (let ((special (intern (format nil "*~A-FUNCTION*" name))))
                `(progn
                   (declaim (type function ,special)
-                           (inline name))
+                           (inline ,name))
                   (defvar ,special (symbol-function ',original))
                   (defun ,name (&rest args)
                     (apply (load-time-value ,special t) args))))))
@@ -901,7 +877,7 @@ be (1+ COUNT)."
 (defun load-gmp (&key (persistently t))
   (setf *gmp-features* nil
         *gmp-version* nil
-        *features* (set-difference *features* '(gmp5.0 gmp5.1)))
+        *features* (set-difference *features* '(:sb-gmp :sb-gmp-5.0 :sb-gmp-5.1)))
   (when persistently
     (pushnew 'load-gmp sb-ext:*init-hooks*)
     (pushnew 'uninstall-gmp-funs sb-ext:*save-hooks*))
@@ -913,9 +889,10 @@ be (1+ COUNT)."
            (warn "SB-GMP requires at least GMP version 5.0")
            (setf success nil))
           (t
-           (pushnew 'gmp5.0 *gmp-features*)
+           (pushnew :sb-gmp *gmp-features*)
+           (pushnew :sb-gmp-5.0 *gmp-features*)
            (when (string>= *gmp-version* "5.1")
-             (pushnew 'gmp5.1 *gmp-features*))
+             (pushnew :sb-gmp-5.1 *gmp-features*))
            (setf *features* (union *features* *gmp-features*))))
     (if success
         (install-gmp-funs)
