@@ -6,6 +6,11 @@
                      ;; bignum float operations
                      #:make-mpfr-float
                      #:mpfr-float-to-string
+                     #:add
+                     #:sub
+                     #:mul
+                     #:square
+                     #:div
                      ;; random number generation
                      ;; ...
                      ;; (un)installer functions
@@ -15,8 +20,18 @@
 
 (in-package :sb-mpfr)
 
-#-win32
-(sb-alien::load-shared-object "libmpfr.so")
+(defun %load-mpfr ()
+  (handler-case
+      (load-shared-object #-(or win32 darwin) "libmpfr.so"
+                          #+darwin "libmpfr.dylib"
+                          #+win32 "mpfr.dll"
+                          :dont-save t)
+    (error (e)
+      (warn "MPFR not loaded (~a)" e)
+      (return-from %load-mpfr nil)))
+  t)
+
+(%load-mpfr)
 
 ;;; types and initialization
 
@@ -29,13 +44,13 @@
 
 (define-alien-type mpfr_rnd_enum
   (enum mpfr_rnd
+        (:mpfr_rndna -1)
         (:mpfr_rndn 0)
         (:mpfr_rndz 1)
         (:mpfr_rndu 2)
         (:mpfr_rndd 3)
         (:mpfr_rnda 4)
-        (:mpfr_rndf 5)
-        (:mpfr_rndna -1)))
+        (:mpfr_rndf 5)))
 
 (declaim (inline mpfr_init2
                  mpfr_clear
@@ -563,7 +578,7 @@
      mpfr_inexflag_p
      mpfr_erangeflag_p))
 
-;;; lisp interface
+;;;; lisp interface
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
 (defparameter *mpfr-rnd* :mpfr_rndn)
@@ -620,7 +635,137 @@
                   *mpfr-base* *mpfr-rnd*)
     mpfr))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun enable-fd-syntax (readtable)
-    (set-dispatch-macro-character #\# #\M #'mpfr-reader readtable)))
+(defun enable-mpfr-syntax (readtable)
+  (set-dispatch-macro-character #\# #\M #'mpfr-reader readtable))
+(enable-mpfr-syntax *readtable*)
 
+;;; arithmetic function
+
+(defun add (x y)
+  (if (typep x 'mpfr-float)
+      (let* ((res (make-mpfr-float))
+             (r (mpfr-float-ref res))
+             (xr (mpfr-float-ref x))
+             (i (etypecase y
+                  (mpfr-float 
+                   (mpfr_add r xr (mpfr-float-ref y) *mpfr-rnd*))
+                  ((unsigned-byte #.sb-vm:n-word-bits)
+                   (mpfr_add_ui r xr y *mpfr-rnd*))
+                  ((signed-byte #.sb-vm:n-word-bits)
+                   (mpfr_add_si r xr y *mpfr-rnd*))
+                  (double-float
+                   (mpfr_add_d r xr y *mpfr-rnd*))
+                  (integer
+                   (sb-gmp::with-mpz-vars ((y gy))
+                     (mpfr_add_z r xr (addr gy) *mpfr-rnd*)))
+                  (rational
+                   (sb-gmp::with-mpq-var (y qy)
+                     (mpfr_add_q r xr (addr qy) *mpfr-rnd*))))))
+        (values res i))
+      (etypecase y
+        (mpfr-float
+         (add y x)))))
+
+(defun sub (x y)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (etypecase x
+              (mpfr-float
+               (let ((xr (mpfr-float-ref x)))
+                 (etypecase y
+                   (mpfr-float 
+                    (mpfr_sub r xr (mpfr-float-ref y) *mpfr-rnd*))
+                   ((unsigned-byte #.sb-vm:n-word-bits)
+                    (mpfr_sub_ui r xr y *mpfr-rnd*))
+                   ((signed-byte #.sb-vm:n-word-bits)
+                    (mpfr_sub_si r xr y *mpfr-rnd*))
+                   (double-float
+                    (mpfr_sub_d r xr y *mpfr-rnd*))
+                   (integer
+                    (sb-gmp::with-mpz-vars ((y gy))
+                      (mpfr_sub_z r xr (addr gy) *mpfr-rnd*)))
+                   (rational
+                    (sb-gmp::with-mpq-var (y qy)
+                      (mpfr_sub_q r xr (addr qy) *mpfr-rnd*))))))
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_ui_sub r x (mpfr-float-ref y) *mpfr-rnd*))))
+              ((signed-byte #.sb-vm:n-word-bits)
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_si_sub r x (mpfr-float-ref y) *mpfr-rnd*))))
+              (double-float
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_d_sub r x (mpfr-float-ref y) *mpfr-rnd*))))
+              (integer
+               (etypecase y
+                 (mpfr-float
+                  (sb-gmp::with-mpz-vars ((x gx))
+                    (mpfr_z_sub r (addr gx) (mpfr-float-ref y) *mpfr-rnd*))))))))
+    (values res i)))
+
+(defun mul (x y)
+  (if (typep x 'mpfr-float)
+      (let* ((res (make-mpfr-float))
+             (r (mpfr-float-ref res))
+             (xr (mpfr-float-ref x))
+             (i (etypecase y
+                  (mpfr-float 
+                   (mpfr_mul r xr y *mpfr-rnd*))
+                  ((unsigned-byte #.sb-vm:n-word-bits)
+                   (mpfr_mul_ui r xr y *mpfr-rnd*))
+                  ((signed-byte #.sb-vm:n-word-bits)
+                   (mpfr_mul_si r xr y *mpfr-rnd*))
+                  (double-float
+                   (mpfr_mul_d r xr y *mpfr-rnd*))
+                  (integer
+                   (sb-gmp::with-mpz-vars ((y gy))
+                     (mpfr_mul_z r xr (addr gy) *mpfr-rnd*)))
+                  (rational
+                   (sb-gmp::with-mpq-var (y qy)
+                     (mpfr_mul_q r xr (addr qy) *mpfr-rnd*))))))
+        (values res i))
+      (etypecase y
+        (mpfr-float
+         (mul y x)))))
+
+(defun sqare (x)
+  (let ((r (make-mpfr-float)))
+    (values r (mpfr_sqr (mpfr-float-ref r) (mpfr-float-ref x) *mpfr-rnd*))))
+
+(defun div (x y)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (etypecase x
+              (mpfr-float
+               (let ((xr (mpfr-float-ref x)))
+                 (etypecase y
+                   (mpfr-float 
+                    (mpfr_div r xr y *mpfr-rnd*))
+                   ((unsigned-byte #.sb-vm:n-word-bits)
+                    (mpfr_div_ui r xr y *mpfr-rnd*))
+                   ((signed-byte #.sb-vm:n-word-bits)
+                    (mpfr_div_si r xr y *mpfr-rnd*))
+                   (double-float
+                    (mpfr_div_d r xr y *mpfr-rnd*))
+                   (integer
+                    (sb-gmp::with-mpz-vars ((y gy))
+                      (mpfr_div_z r xr (addr gy) *mpfr-rnd*)))
+                   (rational
+                    (sb-gmp::with-mpq-var (y qy)
+                      (mpfr_div_q r xr (addr qy) *mpfr-rnd*))))))
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_ui_div r x (mpfr-float-ref y) *mpfr-rnd*))))
+              ((signed-byte #.sb-vm:n-word-bits)
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_si_div r x (mpfr-float-ref y) *mpfr-rnd*))))
+              (double-float
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_d_div r x (mpfr-float-ref y) *mpfr-rnd*)))))))
+    (values res i)))
