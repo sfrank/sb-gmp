@@ -663,6 +663,27 @@ be (1+ COUNT)."
       (decf length))
     (if minusp (- length) length)))
 
+(defmacro with-mpq-var (pair &body body)
+  (destructuring-bind (var mpqvar) pair
+    `(let* ((an (bassert (numerator ,var)))
+            (ad (bassert (denominator ,var)))
+            (asign (not (%bignum-0-or-plusp an (%bignum-length an)))))
+       (when asign
+           (setf an (negate-bignum an nil)))
+       (let* ((anlen (%lsize asign an))
+              (adlen (%lsize NIL ad)))
+           (with-alien ((,mpqvar (struct gmprat)))
+             (sb-sys:with-pinned-objects (an ad)
+               (setf (slot (slot ,mpqvar 'mp_num) 'mp_size) anlen
+                     (slot (slot ,mpqvar 'mp_num) 'mp_alloc) (abs anlen)
+                     (slot (slot ,mpqvar 'mp_num) 'mp_d)
+                     (bignum-data-sap an))
+               (setf (slot (slot ,mpqvar 'mp_den) 'mp_size) adlen
+                     (slot (slot ,mpqvar 'mp_den) 'mp_alloc) (abs adlen)
+                     (slot (slot ,mpqvar 'mp_den) 'mp_d)
+                     (bignum-data-sap ad))
+               ,@body))))))
+
 (defmacro defmpqfun (name gmpfun)
   `(progn
      (declaim (sb-ext:maybe-inline ,name))
