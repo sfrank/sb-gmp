@@ -3,7 +3,7 @@
                      #:*mpfr-precision*
                      #:*mpfr-rnd*
                      #:*mpfr-base*
-                     ;; bignum float operations
+                     ;; arithmetic operations
                      #:make-mpfr-float
                      #:mpfr-float-to-string
                      #:add
@@ -11,12 +11,24 @@
                      #:mul
                      #:square
                      #:div
-                     ;; random number generation
+                     #:sqrt
+                     #:reciprocal-sqrt
+                     #:cubic-root
+                     #:k-root
+                     #:power
+                     #:negate
+                     #:abs
+                     #:dim
+                     #:mul-2-raised
+                     #:div-2-raised
+                     ;; comparison functions
                      ;; ...
                      ;; (un)installer functions
                      ;; #:install-mpfr-funs
                      ;; #:uninstall-mpfr-funs
-                     ))
+                     )
+            (:shadow :sqrt
+                     :abs))
 
 (in-package :sb-mpfr)
 
@@ -377,12 +389,6 @@
   (op2 (* (struct sb-gmp::gmpint)))
   (rnd mpfr_rnd_enum))
 
-(define-alien-routine mpfr_ui_pow_ui int
-  (r (* (struct mpfrfloat)))
-  (op1 unsigned-long)
-  (op2 unsigned-long)
-  (rnd mpfr_rnd_enum))
-
 (define-alien-routine mpfr_ui_pow int
   (r (* (struct mpfrfloat)))
   (op1 unsigned-long)
@@ -403,6 +409,30 @@
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_2ui int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_mul_2si int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_2ui int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_div_2si int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 long)
   (rnd mpfr_rnd_enum))
 
 ;;; special functions
@@ -602,6 +632,7 @@
 
 ;;; printing and reader syntax
 
+;; TODO: check printing of negative values!!!
 (defmethod print-object ((obj mpfr-float) stream)
   (multiple-value-bind (str exp)
       (mpfr-float-to-string obj)
@@ -713,7 +744,7 @@
              (xr (mpfr-float-ref x))
              (i (etypecase y
                   (mpfr-float 
-                   (mpfr_mul r xr y *mpfr-rnd*))
+                   (mpfr_mul r xr (mpfr-float-ref y) *mpfr-rnd*))
                   ((unsigned-byte #.sb-vm:n-word-bits)
                    (mpfr_mul_ui r xr y *mpfr-rnd*))
                   ((signed-byte #.sb-vm:n-word-bits)
@@ -743,7 +774,7 @@
                (let ((xr (mpfr-float-ref x)))
                  (etypecase y
                    (mpfr-float 
-                    (mpfr_div r xr y *mpfr-rnd*))
+                    (mpfr_div r xr (mpfr-float-ref y) *mpfr-rnd*))
                    ((unsigned-byte #.sb-vm:n-word-bits)
                     (mpfr_div_ui r xr y *mpfr-rnd*))
                    ((signed-byte #.sb-vm:n-word-bits)
@@ -768,4 +799,95 @@
                (etypecase y
                  (mpfr-float 
                   (mpfr_d_div r x (mpfr-float-ref y) *mpfr-rnd*)))))))
+    (values res i)))
+
+(defun sqrt (x)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (etypecase x
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (mpfr_sqrt_ui r x *mpfr-rnd*))
+              (mpfr-float
+               (mpfr_sqrt r (mpfr-float-ref x) *mpfr-rnd*)))))
+    (values res i)))
+
+(defun reciprocal-sqrt (x)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (mpfr_rec_sqrt r (mpfr-float-ref x) *mpfr-rnd*)))
+    (values res i)))
+
+(defun cubic-root (x)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (mpfr_cbrt r (mpfr-float-ref x) *mpfr-rnd*)))
+    (values res i)))
+
+(defun k-root (x k)
+  (check-type k (unsigned-byte #.sb-vm:n-word-bits))
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (mpfr_root r (mpfr-float-ref x) k *mpfr-rnd*)))
+    (values res i)))
+
+(defun power (x y)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (etypecase x
+              (mpfr-float
+               (let ((xr (mpfr-float-ref x)))
+                 (etypecase y
+                   (mpfr-float 
+                    (mpfr_pow r xr (mpfr-float-ref y) *mpfr-rnd*))
+                   ((unsigned-byte #.sb-vm:n-word-bits)
+                    (mpfr_pow_ui r xr y *mpfr-rnd*))
+                   ((signed-byte #.sb-vm:n-word-bits)
+                    (mpfr_pow_si r xr y *mpfr-rnd*))
+                   (integer
+                    (sb-gmp::with-mpz-vars ((y gy))
+                      (mpfr_pow_z r xr (addr gy) *mpfr-rnd*))))))
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (etypecase y
+                 (mpfr-float 
+                  (mpfr_ui_pow r x (mpfr-float-ref y) *mpfr-rnd*)))))))
+    (values res i)))
+
+(defun negate (x)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (mpfr_neg r (mpfr-float-ref x) *mpfr-rnd*)))
+    (values res i)))
+
+(defun abs (x)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (mpfr_abs r (mpfr-float-ref x) *mpfr-rnd*)))
+    (values res i)))
+
+(defun dim (x y)
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (mpfr_dim r (mpfr-float-ref x) (mpfr-float-ref y) *mpfr-rnd*)))
+    (values res i)))
+
+(defun mul-2-raised (x y)
+  "Compute X*(2^Y)."
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (etypecase y
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (mpfr_mul_2ui r (mpfr-float-ref x) y *mpfr-rnd*))
+              ((signed-byte #.sb-vm:n-word-bits)
+               (mpfr_mul_2si r (mpfr-float-ref x) y *mpfr-rnd*)))))
+    (values res i)))
+
+(defun div-2-raised (x y)
+  "Compute X/(2^Y)."
+  (let* ((res (make-mpfr-float))
+         (r (mpfr-float-ref res))
+         (i (etypecase y
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (mpfr_div_2ui r (mpfr-float-ref x) y *mpfr-rnd*))
+              ((signed-byte #.sb-vm:n-word-bits)
+               (mpfr_div_2si r (mpfr-float-ref x) y *mpfr-rnd*)))))
     (values res i)))
