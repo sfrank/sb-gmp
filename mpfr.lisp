@@ -858,31 +858,39 @@
 
 ;;; printing and reader syntax
 
-;; TODO: check printing of negative values!!!
 (defmethod print-object ((obj mpfr-float) stream)
-  (multiple-value-bind (str exp)
+  (multiple-value-bind (str exp sign)
       (mpfr-float-to-string obj)
+    (declare (type (integer -1 1) sign))
     (if *print-readably*
         (if (minusp exp)
             (format stream "#M~s" str)
-            (format stream "#M\"~a@~s\"" str
-                    (- exp (length str))) ; why is the returned exp value
-                                          ; of mpfr_get_str so weird?!
-            )
+            (case sign
+              (0 (format stream "#M\"0\""))
+              (1 (format stream "#M\"~a@~s\"" str
+                         (- exp (length str))))
+              (-1 (format stream "#M\"~a@~s\"" str
+                          (- (1+ exp) (length str))))))
         (if (minusp exp)
             (format stream "~a" str)
-            (format stream "~a.~a"
-                    (subseq str 0 exp)
-                    (subseq str exp))))))
+            (case sign
+              (0 (format stream "0"))
+              (1 (format stream "~a.~a"
+                         (subseq str 0 exp)
+                         (subseq str exp)))
+              (-1 (format stream "-~a.~a"
+                          (subseq str 1 (1+ exp))
+                          (subseq str (1+ exp)))))))))
 
 (defun mpfr-float-to-string (x &optional (rnd *mpfr-rnd*))
-  (with-alien ((exp long)
-               (str (* char)))
-    (setf exp -1)
-    (setf str (mpfr_get_str NIL (addr exp) *print-base* 0 (mpfr-float-ref x) rnd))
-    (multiple-value-prog1 
-        (values (cast str c-string) exp)
-      (mpfr_free_str str))))
+  (let ((xr (mpfr-float-ref x)))
+    (with-alien ((exp long)
+                 (str (* char)))
+      (setf exp -1)
+      (setf str (mpfr_get_str NIL (addr exp) *print-base* 0 xr rnd))
+      (multiple-value-prog1 
+          (values (cast str c-string) exp (mpfr_cmp_ui xr 0))
+        (mpfr_free_str str)))))
 
 (defun mpfr-reader (stream subchar arg)
   (declare (ignore subchar arg))
