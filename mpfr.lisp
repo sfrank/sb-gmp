@@ -21,14 +21,78 @@
                      #:dim
                      #:mul-2-raised
                      #:div-2-raised
+                     ;; special functions
+                     #:log
+                     #:log2
+                     #:log10
+                     #:exp
+                     #:exp2
+                     #:exp10
+                     #:cos
+                     #:sin
+                     #:tan
+                     #:sin-cos
+                     #:sec
+                     #:csc
+                     #:cot
+                     #:acos
+                     #:asin
+                     #:atan
+                     #:cosh
+                     #:sinh
+                     #:tanh
+                     #:sinh-cosh
+                     #:sech
+                     #:csch
+                     #:coth
+                     #:acosh
+                     #:asinh
+                     #:atanh
+                     #:log1p
+                     #:expm1
+                     #:eint
+                     #:li2
+                     #:gamma
+                     #:lngamma
+                     #:digamma
+                     #:zeta
+                     #:erf
+                     #:erfc
+                     #:j0
+                     #:j1
+                     #:y0
+                     #:y1
+                     #:ai
+                     #:arithmetic-geometric-mean
+                     #:hypot
                      ;; comparison functions
                      ;; ...
+                     ;; constants
+                     #:const-log2
+                     #:const-pi
+                     #:const-euler
+                     #:const-catalan
                      ;; (un)installer functions
                      ;; #:install-mpfr-funs
                      ;; #:uninstall-mpfr-funs
                      )
             (:shadow :sqrt
-                     :abs))
+                     :abs
+                     :log
+                     :exp
+                     :cos
+                     :sin
+                     :tan
+                     :acos
+                     :asin
+                     :atan
+                     :cosh
+                     :sinh
+                     :tanh
+                     :acosh
+                     :asinh
+                     :atanh
+                     ))
 
 (in-package :sb-mpfr)
 
@@ -944,3 +1008,122 @@
               ((signed-byte #.sb-vm:n-word-bits)
                (mpfr_div_2si r (mpfr-float-ref x) y *mpfr-rnd*)))))
     (values res i)))
+
+;;; special functions
+
+(defmacro define-onearg-mpfr-funs (funs)
+  (loop for (clfun mfun) in funs
+        collect `(defun ,clfun (x)
+                   (let* ((result (make-mpfr-float))
+                          (i (,mfun (mpfr-float-ref result)
+                                    (mpfr-float-ref x)
+                                    *mpfr-rnd*)))
+                     (values result i)))
+          into defines
+        finally (return `(progn
+                           ,@defines))))
+
+(define-onearg-mpfr-funs
+    ((log mpfr_log)
+     (log2 mpfr_log2)
+     (log10 mpfr_log10)
+     (exp mpfr_exp)
+     (exp2 mpfr_exp2)
+     (exp10 mpfr_exp10)
+     (cos mpfr_cos)
+     (sin mpfr_sin)
+     (tan mpfr_tan)
+     (sec mpfr_sec)
+     (csc mpfr_csc)
+     (cot mpfr_cot)
+     (acos mpfr_acos)
+     (asin mpfr_asin)
+     (cosh mpfr_cosh)
+     (sinh mpfr_sinh)
+     (tanh mpfr_tanh)
+     (sech mpfr_sech)
+     (csch mpfr_csch)
+     (coth mpfr_coth)
+     (acosh mpfr_acosh)
+     (asinh mpfr_asinh)
+     (atanh mpfr_atanh)
+     (log1p mpfr_log1p)
+     (expm1 mpfr_expm1)
+     (eint mpfr_eint)
+     (li2 mpfr_li2)
+     (gamma mpfr_gamma)
+     (lngamma mpfr_lngamma)
+     (digamma mpfr_digamma)
+     (zeta mpfr_zeta)
+     (erf mpfr_erf)
+     (erfc mpfr_erfc)
+     (j0 mpfr_j0)
+     (j1 mpfr_j1)
+     (y0 mpfr_y0)
+     (y1 mpfr_y1)
+     (ai mpfr_ai)))
+
+(defun atan (y &optional x)
+  (if x
+      (let* ((result (make-mpfr-float))
+             (i (mpfr_atan2 (mpfr-float-ref result)
+                            (mpfr-float-ref y)
+                            (mpfr-float-ref x)
+                            *mpfr-rnd*)))
+        (values result i))
+      (let* ((result (make-mpfr-float))
+             (i (mpfr_atan (mpfr-float-ref result)
+                           (mpfr-float-ref y)
+                           *mpfr-rnd*)))
+        (values result i))))
+
+(defun sin-cos (x)
+  (let* ((sin (make-mpfr-float))
+         (cos (make-mpfr-float))
+         (i (mpfr_sin_cos (mpfr-float-ref sin)
+                          (mpfr-float-ref cos)
+                          (mpfr-float-ref x)
+                          *mpfr-rnd*)))
+    (values sin cos i)))
+
+(defun sinh-cosh (x)
+  (let* ((sin (make-mpfr-float))
+         (cos (make-mpfr-float))
+         (i (mpfr_sinh_cosh (mpfr-float-ref sin)
+                            (mpfr-float-ref cos)
+                            (mpfr-float-ref x)
+                            *mpfr-rnd*)))
+    (values sin cos i)))
+
+(defun arithmetic-geometric-mean (u v)
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_agm (mpfr-float-ref result)
+                      (mpfr-float-ref u)
+                      (mpfr-float-ref v)
+                      *mpfr-rnd*)))
+    (values result i)))
+
+(defun hypot (x y)
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_hypot (mpfr-float-ref result)
+                        (mpfr-float-ref x)
+                        (mpfr-float-ref y)
+                        *mpfr-rnd*)))
+    (values result i)))
+
+(defmacro define-const-mpfr-funs (funs)
+  (loop for (fname mname) in funs
+        collect `(defun ,fname ()
+                   (let* ((result (make-mpfr-float))
+                          (i (,mname (mpfr-float-ref result)
+                                     *mpfr-rnd*)))
+                     (values result i)))
+          into defines
+        finally (return `(progn
+                           ,@defines))))
+
+(define-const-mpfr-funs
+    ((const-log2 mpfr_const_log2)
+     (const-pi mpfr_const_pi)
+     (const-euler mpfr_const_euler)
+     (const-catalan mpfr_const_catalan)))
