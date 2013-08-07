@@ -71,6 +71,7 @@
                      #:numberp
                      #:zerop
                      #:regularp
+                     #:compare-abs
                      #:>
                      #:>=
                      #:<
@@ -660,6 +661,8 @@
 
 ;;; comparison functions
 
+;; TODO: cmp
+
 (define-alien-routine mpfr_cmpabs int
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat))))
@@ -1174,7 +1177,8 @@
                            ,@defines))))
 
 (define-twoarg-mpfr-predicates
-    ((> mpfr_greater_p)
+    ((compare-abs mpfr_cmpabs)
+     (> mpfr_greater_p)
      (>= mpfr_greaterequal_p)
      (< mpfr_less_p)
      (<= mpfr_lessequal_p)
