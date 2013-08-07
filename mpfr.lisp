@@ -65,8 +65,12 @@
                      #:ai
                      #:arithmetic-geometric-mean
                      #:hypot
-                     ;; comparison functions
-                     ;; ...
+                     ;; comparison functions and predicates
+                     #:nan-p
+                     #:infinityp
+                     #:numberp
+                     #:zerop
+                     #:regularp
                      ;; constants
                      #:const-log2
                      #:const-pi
@@ -92,7 +96,8 @@
                      :acosh
                      :asinh
                      :atanh
-                     ))
+                     :numberp
+                     :zerop))
 
 (in-package :sb-mpfr)
 
@@ -647,7 +652,6 @@
 
 (defmacro define-onearg-mpfr-bool (funs)
   (loop for i in funs collect `(define-alien-routine ,i boolean
-                                 (r (* (struct mpfrfloat)))
                                  (op (* (struct mpfrfloat))))
           into defines
         finally (return `(progn
@@ -787,7 +791,7 @@
   (set-dispatch-macro-character #\# #\M #'mpfr-reader readtable))
 (enable-mpfr-syntax *readtable*)
 
-;;; arithmetic function
+;;; arithmetic functions
 
 (defun add (x y)
   (if (typep x 'mpfr-float)
@@ -1111,6 +1115,8 @@
                         *mpfr-rnd*)))
     (values result i)))
 
+;;; constant values
+
 (defmacro define-const-mpfr-funs (funs)
   (loop for (fname mname) in funs
         collect `(defun ,fname ()
@@ -1127,3 +1133,21 @@
      (const-pi mpfr_const_pi)
      (const-euler mpfr_const_euler)
      (const-catalan mpfr_const_catalan)))
+
+;;; comparison functions and poredicates
+
+(defmacro define-onearg-mpfr-predicates (funs)
+  (loop for (fname mname) in funs
+        collect `(defun ,fname (x)
+                   (,mname (mpfr-float-ref x)))
+          into defines
+        finally (return `(progn
+                           ,@defines))))
+
+(define-onearg-mpfr-predicates
+    ((nan-p mpfr_nan_p)
+     (infinityp mpfr_inf_p)
+     (numberp mpfr_number_p)
+     (zerop mpfr_zero_p)
+     (regularp mpfr_regular_p)))
+
