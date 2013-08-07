@@ -148,6 +148,56 @@
 
 ;;; arithmetic functions
 
+(declaim (inline mpfr_add
+                 mpfr_add_ui
+                 mpfr_add_si
+                 mpfr_add_d
+                 mpfr_add_z
+                 mpfr_add_q
+                 mpfr_sub
+                 mpfr_ui_sub
+                 mpfr_sub_ui
+                 mpfr_si_sub
+                 mpfr_sub_si
+                 mpfr_d_sub
+                 mpfr_sub_d
+                 mpfr_z_sub
+                 mpfr_sub_z
+                 mpfr_sub_q
+                 mpfr_mul
+                 mpfr_mul_ui
+                 mpfr_mul_si
+                 mpfr_mul_d
+                 mpfr_mul_z
+                 mpfr_mul_q
+                 mpfr_sqr
+                 mpfr_div
+                 mpfr_ui_div
+                 mpfr_div_ui
+                 mpfr_si_div
+                 mpfr_div_si
+                 mpfr_d_div
+                 mpfr_div_d
+                 mpfr_div_z
+                 mpfr_div_q
+                 mpfr_sqrt
+                 mpfr_sqrt_ui
+                 mpfr_rec_sqrt
+                 mpfr_cbrt
+                 mpfr_root
+                 mpfr_pow
+                 mpfr_pow_ui
+                 mpfr_pow_si
+                 mpfr_pow_z
+                 mpfr_ui_pow
+                 mpfr_neg
+                 mpfr_abs
+                 mpfr_dim
+                 mpfr_mul_2ui
+                 mpfr_mul_2si
+                 mpfr_div_2ui
+                 mpfr_div_2si))
+
 (define-alien-routine mpfr_add int
   (r (* (struct mpfrfloat)))
   (op1 (* (struct mpfrfloat)))
@@ -613,6 +663,9 @@
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
 (defparameter *mpfr-rnd* :mpfr_rndn)
 (defparameter *mpfr-base* 10)
+
+(declaim (inline mpfr-float-ref
+                 make-mpfr-float))
 
 (defstruct (mpfr-float (:constructor %make-mpfr-float))
   (ref (make-alien (struct mpfrfloat))
