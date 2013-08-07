@@ -71,6 +71,8 @@
                      #:numberp
                      #:zerop
                      #:regularp
+                     #:compare
+                     #:compare-2exp
                      #:compare-abs
                      #:>
                      #:>=
@@ -705,6 +707,16 @@
 
 ;;; comparison functions
 
+(declaim (inline mpfr_cmp
+                 mpfr_cmp_ui
+                 mpfr_cmp_si
+                 mpfr_cmp_d
+                 mpfr_cmp_z
+                 mpfr_cmp_q
+                 mpfr_cmp_ui_2exp
+                 mpfr_cmp_si_2exp
+                 mpfr_cmpabs))
+
 (define-alien-routine mpfr_cmp int
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat))))
@@ -715,7 +727,7 @@
 
 (define-alien-routine mpfr_cmp_si int
   (op1 (* (struct mpfrfloat)))
-  (op2 unsigned-long))
+  (op2 long))
 
 (define-alien-routine mpfr_cmp_d int
   (op1 (* (struct mpfrfloat)))
@@ -731,15 +743,18 @@
 
 (define-alien-routine mpfr_cmp_ui_2exp int
   (op1 (* (struct mpfrfloat)))
-  (op2 unsigned-long))
+  (op2 unsigned-long)
+  (exp long))
 
 (define-alien-routine mpfr_cmp_si_2exp int
   (op1 (* (struct mpfrfloat)))
-  (op2 long))
+  (op2 long)
+  (exp long))
 
 (define-alien-routine mpfr_cmpabs int
   (op1 (* (struct mpfrfloat)))
   (op2 (* (struct mpfrfloat))))
+
 
 (defmacro define-onearg-mpfr-bool (funs)
   (loop for i in funs collect `(define-alien-routine ,i boolean
@@ -1259,3 +1274,36 @@
      (= mpfr_equal_p)
      (/= mpfr_lessgreater_p)
      (unorderedp mpfr_unordered_p)))
+
+(defun compare (x y)
+  (if (typep x 'mpfr-float)
+      (etypecase y
+        (mpfr-float 
+         (mpfr_cmp (mpfr-float-ref x)
+                   (mpfr-float-ref y)))
+        ((unsigned-byte #.sb-vm:n-word-bits)
+         (mpfr_cmp_ui (mpfr-float-ref x) y))
+        ((signed-byte #.sb-vm:n-word-bits)
+         (mpfr_cmp_si (mpfr-float-ref x) y))
+        (double-float
+         (mpfr_cmp_d (mpfr-float-ref x) y))
+        (integer
+         (sb-gmp::with-mpz-vars ((y gy))
+           (mpfr_cmp_z (mpfr-float-ref x) (addr gy))))
+        (rational
+         (sb-gmp::with-mpq-var (y qy)
+           (mpfr_cmp_q (mpfr-float-ref x) (addr qy)))))
+      (etypecase y
+        (mpfr-float
+         (compare y x)))))
+
+(defun compare-2exp (x y exp)
+  (if (typep x 'mpfr-float)
+      (etypecase y
+        ((unsigned-byte #.sb-vm:n-word-bits)
+         (mpfr_cmp_ui_2exp (mpfr-float-ref x) y exp))
+        ((signed-byte #.sb-vm:n-word-bits)
+         (mpfr_cmp_si_2exp (mpfr-float-ref x) y exp)))
+      (etypecase y
+        (mpfr-float
+         (compare-2exp y x exp)))))
