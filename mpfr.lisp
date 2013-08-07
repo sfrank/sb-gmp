@@ -71,6 +71,13 @@
                      #:numberp
                      #:zerop
                      #:regularp
+                     #:>
+                     #:>=
+                     #:<
+                     #:<=
+                     #:=
+                     #:/=
+                     #:unorderedp
                      ;; constants
                      #:const-log2
                      #:const-pi
@@ -97,7 +104,14 @@
                      :asinh
                      :atanh
                      :numberp
-                     :zerop))
+                     :zerop
+                     :>
+                     :>=
+                     :<
+                     :<=
+                     :=
+                     :/=
+                     ))
 
 (in-package :sb-mpfr)
 
@@ -670,7 +684,6 @@
 
 (defmacro define-twoarg-mpfr-bool (funs)
   (loop for i in funs collect `(define-alien-routine ,i boolean
-                                 (r (* (struct mpfrfloat)))
                                  (op1 (* (struct mpfrfloat)))
                                  (op2 (* (struct mpfrfloat))))
           into defines
@@ -1151,3 +1164,20 @@
      (zerop mpfr_zero_p)
      (regularp mpfr_regular_p)))
 
+(defmacro define-twoarg-mpfr-predicates (funs)
+  (loop for (fname mname) in funs
+        collect `(defun ,fname (x y)
+                   (,mname (mpfr-float-ref x)
+                           (mpfr-float-ref y)))
+          into defines
+        finally (return `(progn
+                           ,@defines))))
+
+(define-twoarg-mpfr-predicates
+    ((> mpfr_greater_p)
+     (>= mpfr_greaterequal_p)
+     (< mpfr_less_p)
+     (<= mpfr_lessequal_p)
+     (= mpfr_equal_p)
+     (/= mpfr_lessgreater_p)
+     (unorderedp mpfr_unordered_p)))
