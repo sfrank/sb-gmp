@@ -641,6 +641,44 @@
      mpfr_hypot))
 
 ;; TODO: fac_ui, zeta_ui, jn, yn, fma, fms
+(define-alien-routine mpfr_fac_ui int
+  (r (* (struct mpfrfloat)))
+  (op unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_zeta_ui int
+  (r (* (struct mpfrfloat)))
+  (op unsigned-long)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_jn int
+  (r (* (struct mpfrfloat)))
+  (n long)
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_yn int
+  (r (* (struct mpfrfloat)))
+  (n long)
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_fma int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (op3 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_fms int
+  (r (* (struct mpfrfloat)))
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (op3 (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+
+;;; constant initialization
 
 (defmacro define-const-mpfr-int (funs)
   (loop for i in funs collect `(define-alien-routine ,i int
@@ -658,10 +696,46 @@
      mpfr_const_catalan))
 
 ;; TODO: _sum
+(define-alien-routine mpfr_sum int
+  (r (* (struct mpfrfloat)))
+  (tab (* (struct mpfrfloat)))
+  (n unsigned-long)
+  (rnd mpfr_rnd_enum))
+
 
 ;;; comparison functions
 
-;; TODO: cmp
+(define-alien-routine mpfr_cmp int
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_cmp_ui int
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long))
+
+(define-alien-routine mpfr_cmp_si int
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long))
+
+(define-alien-routine mpfr_cmp_d int
+  (op1 (* (struct mpfrfloat)))
+  (op2 double))
+
+(define-alien-routine mpfr_cmp_z int
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmpint))))
+
+(define-alien-routine mpfr_cmp_q int
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct sb-gmp::gmprat))))
+
+(define-alien-routine mpfr_cmp_ui_2exp int
+  (op1 (* (struct mpfrfloat)))
+  (op2 unsigned-long))
+
+(define-alien-routine mpfr_cmp_si_2exp int
+  (op1 (* (struct mpfrfloat)))
+  (op2 long))
 
 (define-alien-routine mpfr_cmpabs int
   (op1 (* (struct mpfrfloat)))
