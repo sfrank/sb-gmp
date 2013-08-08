@@ -48,6 +48,7 @@
                      #:acosh
                      #:asinh
                      #:atanh
+                     #:fac
                      #:log1p
                      #:expm1
                      #:eint
@@ -60,11 +61,15 @@
                      #:erfc
                      #:j0
                      #:j1
+                     #:jn
                      #:y0
                      #:y1
+                     #:yn
                      #:ai
                      #:arithmetic-geometric-mean
                      #:hypot
+                     #:fma
+                     #:fms
                      ;; comparison functions and predicates
                      #:nan-p
                      #:infinityp
@@ -644,7 +649,6 @@
      mpfr_agm
      mpfr_hypot))
 
-;; TODO: fac_ui, zeta_ui, jn, yn, fma, fms
 (define-alien-routine mpfr_fac_ui int
   (r (* (struct mpfrfloat)))
   (op unsigned-long)
@@ -1177,7 +1181,6 @@
      (gamma mpfr_gamma)
      (lngamma mpfr_lngamma)
      (digamma mpfr_digamma)
-     (zeta mpfr_zeta)
      (erf mpfr_erf)
      (erfc mpfr_erfc)
      (j0 mpfr_j0)
@@ -1232,6 +1235,64 @@
                         (mpfr-float-ref x)
                         (mpfr-float-ref y)
                         *mpfr-rnd*)))
+    (values result i)))
+
+(defun fac (x)
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_fac_ui (mpfr-float-ref result)
+                        x
+                        *mpfr-rnd*)))
+    (values result i)))
+
+(defun zeta (x)
+  (let* ((result (make-mpfr-float))
+         (i (etypecase x
+              (mpfr-float
+               (mpfr_zeta (mpfr-float-ref result)
+                          (mpfr-float-ref x)
+                          *mpfr-rnd*))
+              ((unsigned-byte #.sb-vm:n-word-bits)
+               (mpfr_zeta_ui (mpfr-float-ref result)
+                             x
+                             *mpfr-rnd*)))))
+    (values result i)))
+
+(defun jn (n x)
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_jn (mpfr-float-ref result)
+                     n
+                     (mpfr-float-ref x)
+                     *mpfr-rnd*)))
+    (values result i)))
+
+(defun yn (n x)
+  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_yn (mpfr-float-ref result)
+                     n
+                     (mpfr-float-ref x)
+                     *mpfr-rnd*)))
+    (values result i)))
+
+(defun fma (x y z)
+  "fma X Y Z = (X * Y) + Z"
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_fma (mpfr-float-ref result)
+                      (mpfr-float-ref x)
+                      (mpfr-float-ref y)
+                      (mpfr-float-ref z)
+                      *mpfr-rnd*)))
+    (values result i)))
+
+(defun fms (x y z)
+  "fma X Y Z = (X * Y) - Z"
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_fms (mpfr-float-ref result)
+                      (mpfr-float-ref x)
+                      (mpfr-float-ref y)
+                      (mpfr-float-ref z)
+                      *mpfr-rnd*)))
     (values result i)))
 
 ;;; constant values
