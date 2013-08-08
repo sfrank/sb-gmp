@@ -93,6 +93,13 @@
                      #:const-pi
                      #:const-euler
                      #:const-catalan
+                     ;; miscellaneous functions
+                     #:underflowp
+                     #:overflowp
+                     #:div-by-zero-p
+                     #:nanflag-p
+                     #:inexflag-p
+                     #:erangeflag-p
                      ;; (un)installer functions
                      ;; #:install-mpfr-funs
                      ;; #:uninstall-mpfr-funs
@@ -1403,3 +1410,23 @@
       (etypecase y
         (mpfr-float
          (compare-2exp y x exp)))))
+
+
+;;; miscellaneous functions
+
+(defmacro define-mpfr-flag-predicates (funs)
+  (loop for (pname mname) in funs
+        collect `(defun ,pname () (,mname))
+          into defines
+        collect pname into names
+        finally (return `(progn
+                           (declaim (inline ,@names))
+                           ,@defines))))
+
+(define-mpfr-flag-predicates
+    ((underflowp mpfr_underflow_p)
+     (overflowp mpfr_overflow_p)
+     (div-by-zero-p mpfr_divby0_p)
+     (nanflag-p mpfr_nanflag_p)
+     (inexflag-p mpfr_inexflag_p)
+     (erangeflag-p mpfr_erangeflag_p)))
