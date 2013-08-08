@@ -70,6 +70,7 @@
                      #:hypot
                      #:fma
                      #:fms
+                     #:sum
                      ;; comparison functions and predicates
                      #:nan-p
                      #:infinityp
@@ -703,10 +704,9 @@
      mpfr_const_euler
      mpfr_const_catalan))
 
-;; TODO: _sum
 (define-alien-routine mpfr_sum int
   (r (* (struct mpfrfloat)))
-  (tab (* (struct mpfrfloat)))
+  (tab (* (* (struct mpfrfloat))))
   (n unsigned-long)
   (rnd mpfr_rnd_enum))
 
@@ -1294,6 +1294,26 @@
                       (mpfr-float-ref z)
                       *mpfr-rnd*)))
     (values result i)))
+
+(defun sum (seq)
+  (let ((length (length seq))
+        (idx -1))
+    (declare (type (integer -1 #.most-positive-fixnum) idx))
+    (let ((result (make-mpfr-float))
+          (ar (make-alien (* (struct mpfrfloat)) length)))
+      (unwind-protect
+           (progn
+             (map nil (lambda (x)
+                        (setf (deref ar (incf idx))
+                              (mpfr-float-ref x)))
+                  seq)
+             (let ((i (mpfr_sum (mpfr-float-ref result)
+                                ar
+                                length
+                                *mpfr-rnd*)))
+               (values result i)))
+        (free-alien ar)))))
+
 
 ;;; constant values
 
