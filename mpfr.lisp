@@ -68,6 +68,7 @@
                      ;; comparison functions and predicates
                      #:nan-p
                      #:infinityp
+                     #:integerp
                      #:numberp
                      #:zerop
                      #:regularp
@@ -107,6 +108,7 @@
                      :asinh
                      :atanh
                      :numberp
+                     :integerp
                      :zerop
                      :>
                      :>=
@@ -769,6 +771,7 @@
      mpfr_inf_p
      mpfr_number_p
      mpfr_zero_p
+     mpfr_integer_p
      mpfr_regular_p))
 
 (define-alien-routine mpfr_sgn int
@@ -791,6 +794,7 @@
      mpfr_equal_p
      mpfr_lessgreater_p
      mpfr_unordered_p))
+
 
 ;;; miscellaneous functions
 
@@ -830,6 +834,7 @@
      mpfr_nanflag_p
      mpfr_inexflag_p
      mpfr_erangeflag_p))
+
 
 ;;;; lisp interface
 
@@ -903,6 +908,7 @@
 (defun enable-mpfr-syntax (readtable)
   (set-dispatch-macro-character #\# #\M #'mpfr-reader readtable))
 (enable-mpfr-syntax *readtable*)
+
 
 ;;; arithmetic functions
 
@@ -1247,7 +1253,7 @@
      (const-euler mpfr_const_euler)
      (const-catalan mpfr_const_catalan)))
 
-;;; comparison functions and poredicates
+;;; comparison functions and predicates
 
 (defmacro define-onearg-mpfr-predicates (funs)
   (loop for (fname mname) in funs
@@ -1262,6 +1268,7 @@
      (infinityp mpfr_inf_p)
      (numberp mpfr_number_p)
      (zerop mpfr_zero_p)
+     (integerp mpfr_integer_p)
      (regularp mpfr_regular_p)))
 
 (defmacro define-twoarg-mpfr-predicates (funs)
