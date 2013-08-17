@@ -94,6 +94,19 @@
                      #:const-euler
                      #:const-catalan
                      ;; miscellaneous functions
+                     #:clear-underflow
+                     #:clear-overflow
+                     #:clear-div-by-zero
+                     #:cleanr-nan-flag
+                     #:clear-inex-flag
+                     #:clear-erange-flag
+                     #:set-underflow-flag
+                     #:set-overflow-flag
+                     #:set-div-by-zero-flag
+                     #:set-nan-flag
+                     #:set-inex-flag
+                     #:set-erange-flag
+                     #:clear-flags
                      #:underflowp
                      #:overflowp
                      #:div-by-zero-p
@@ -1414,9 +1427,38 @@
 
 ;;; miscellaneous functions
 
+(defmacro define-mpfr-flag-funs (funs)
+  (loop for (pname mname) in funs
+        collect `(defun ,pname ()
+                   (declare (optimize (speed 3) (space 3)))
+                   (,mname) (values))
+          into defines
+        collect pname into names
+        finally (return `(progn
+                           (declaim (inline ,@names))
+                           ,@defines))))
+
+(define-mpfr-flag-funs
+    ((clear-underflow mpfr_clear_underflow)
+     (clear-overflow mpfr_clear_overflow)
+     (clear-div-by-zero mpfr_clear_divby0)
+     (cleanr-nan-flag mpfr_clear_nanflag)
+     (clear-inex-flag mpfr_clear_inexflag)
+     (clear-erange-flag mpfr_clear_erangeflag)
+     (set-underflow-flag mpfr_set_underflow)
+     (set-overflow-flag mpfr_set_overflow)
+     (set-div-by-zero-flag mpfr_set_divby0)
+     (set-nan-flag mpfr_set_nanflag)
+     (set-inex-flag mpfr_set_inexflag)
+     (set-erange-flag mpfr_set_erangeflag)
+     (clear-flags mpfr_clear_flags)))
+
+
 (defmacro define-mpfr-flag-predicates (funs)
   (loop for (pname mname) in funs
-        collect `(defun ,pname () (,mname))
+        collect `(defun ,pname ()
+                   (declare (optimize (speed 3) (space 3)))
+                   (,mname))
           into defines
         collect pname into names
         finally (return `(progn
