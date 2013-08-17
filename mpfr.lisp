@@ -97,7 +97,7 @@
                      #:clear-underflow
                      #:clear-overflow
                      #:clear-div-by-zero
-                     #:cleanr-nan-flag
+                     #:clear-nan-flag
                      #:clear-inex-flag
                      #:clear-erange-flag
                      #:set-underflow-flag
@@ -1442,7 +1442,7 @@
     ((clear-underflow mpfr_clear_underflow)
      (clear-overflow mpfr_clear_overflow)
      (clear-div-by-zero mpfr_clear_divby0)
-     (cleanr-nan-flag mpfr_clear_nanflag)
+     (clear-nan-flag mpfr_clear_nanflag)
      (clear-inex-flag mpfr_clear_inexflag)
      (clear-erange-flag mpfr_clear_erangeflag)
      (set-underflow-flag mpfr_set_underflow)
