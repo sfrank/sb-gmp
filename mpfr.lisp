@@ -117,6 +117,9 @@
    ;; (un)installer functions
    ;; #:install-mpfr-funs
    ;; #:uninstall-mpfr-funs
+   ;; special variables
+   #:*mpfr-version*
+   #:*mpfr-features*
    )
   (:shadow
    #:sqrt
@@ -148,6 +151,9 @@
 
 (in-package :sb-mpfr)
 
+(defvar *mpfr-version* nil)
+(defvar *mpfr-features* nil)
+
 (defun %load-mpfr ()
   (handler-case
       (load-shared-object #-(or win32 darwin) "libmpfr.so"
@@ -159,7 +165,31 @@
       (return-from %load-mpfr nil)))
   t)
 
-(%load-mpfr)
+(define-alien-routine mpfr_get_version c-string)
+
+(defun load-mpfr (&key (persistently t))
+  (setf *mpfr-version* nil
+        *mpfr-features* nil
+        *features* (set-difference *features* '(:sb-mpfr)))
+  (when persistently
+    (pushnew 'load-mpfr sb-ext:*init-hooks*)
+    ;(pushnew 'uninstall-mpfr-funs sb-ext:*save-hooks*)
+    )
+  (let ((success (%load-mpfr)))
+    (when success
+      (setf *mpfr-version* (mpfr_get_version)))
+    (cond ((null *mpfr-version*))
+          ((string<= *mpfr-version* "3.1")
+           (warn "SB-MPFR requires at least MPFR version 3.1")
+           (setf success nil))
+          (t
+           (pushnew :sb-mpfr *mpfr-features*)
+           (setf *features* (union *features* *mpfr-features*))))
+    success))
+
+(load-mpfr)
+
+
 
 ;;; types and initialization
 
