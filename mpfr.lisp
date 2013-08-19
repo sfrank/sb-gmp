@@ -1,6 +1,7 @@
 (defpackage :sb-mpfr 
   (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL")
-  (:export ;; parameters
+  (:export
+   ;; parameters
    #:*mpfr-precision*
    #:*mpfr-rnd*
    #:*mpfr-base*
