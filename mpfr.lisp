@@ -115,6 +115,10 @@
    #:nanflag-p
    #:inexflag-p
    #:erangeflag-p
+   ;; random number generation
+   #:urandomb
+   #:urandom
+   #:grandom
    ;; (un)installer functions
    ;; #:install-mpfr-funs
    ;; #:uninstall-mpfr-funs
@@ -893,6 +897,22 @@
      mpfr_erangeflag_p))
 
 
+(define-alien-routine mpfr_urandomb int
+  (op (* (struct mpfrfloat)))
+  (s (* (struct sb-gmp::gmprandstate))))
+
+(define-alien-routine mpfr_urandom int
+  (op (* (struct mpfrfloat)))
+  (s (* (struct sb-gmp::gmprandstate)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_grandom int
+  (op1 (* (struct mpfrfloat)))
+  (op2 (* (struct mpfrfloat)))
+  (s (* (struct sb-gmp::gmprandstate)))
+  (rnd mpfr_rnd_enum))
+
+
 ;;;; lisp interface
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
@@ -1505,3 +1525,34 @@
      (nanflag-p mpfr_nanflag_p)
      (inexflag-p mpfr_inexflag_p)
      (erangeflag-p mpfr_erangeflag_p)))
+
+
+;;; random number generation
+
+(defun urandomb (state)
+  (check-type state sb-gmp::gmp-rstate)
+  (let* ((ref (sb-gmp::gmp-rstate-ref state))
+         (result (make-mpfr-float))
+         (i (mpfr_urandomb (mpfr-float-ref result)
+                           ref)))
+    (values result i)))
+
+(defun urandom (state)
+  (check-type state sb-gmp::gmp-rstate)
+  (let* ((ref (sb-gmp::gmp-rstate-ref state))
+         (result (make-mpfr-float))
+         (i (mpfr_urandom (mpfr-float-ref result)
+                          ref
+                          *mpfr-rnd*)))
+    (values result i)))
+
+(defun grandom (state)
+  (check-type state sb-gmp::gmp-rstate)
+  (let* ((ref (sb-gmp::gmp-rstate-ref state))
+         (result1 (make-mpfr-float))
+         (result2 (make-mpfr-float))
+         (i (mpfr_grandom (mpfr-float-ref result1)
+                          (mpfr-float-ref result2)
+                          ref
+                          *mpfr-rnd*)))
+    (values result1 result2 i)))
