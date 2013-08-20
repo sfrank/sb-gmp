@@ -910,6 +910,58 @@
   (rnd mpfr_rnd_enum))
 
 
+;;; integer and remainder related functions / rounding
+
+(define-onearg-mpfr-int
+    (mpfr_rint
+     mpfr_rint_ceil
+     mpfr_rint_floor
+     mpfr_rint_round
+     mpfr_rint_trunc
+     mpfr_frac))
+
+(define-alien-routine mpfr_ceil int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_floor int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_round int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_trunc int
+  (r (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat))))
+
+(define-alien-routine mpfr_modf int
+  (ir (* (struct mpfrfloat)))
+  (fr (* (struct mpfrfloat)))
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_fmod int
+  (r (* (struct mpfrfloat)))
+  (x (* (struct mpfrfloat)))
+  (y (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_remainder int
+  (r (* (struct mpfrfloat)))
+  (x (* (struct mpfrfloat)))
+  (y (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_remquo int
+  (r (* (struct mpfrfloat)))
+  (q (* int))
+  (x (* (struct mpfrfloat)))
+  (y (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+
 ;;;; lisp interface
 
 (defparameter *mpfr-precision* (mpfr_get_default_prec))
