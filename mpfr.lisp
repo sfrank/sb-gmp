@@ -119,9 +119,6 @@
    #:urandomb
    #:urandom
    #:grandom
-   ;; (un)installer functions
-   ;; #:install-mpfr-funs
-   ;; #:uninstall-mpfr-funs
    ;; special variables
    #:*mpfr-version*
    #:*mpfr-features*
