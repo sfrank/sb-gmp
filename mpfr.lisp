@@ -123,7 +123,22 @@
    #:urandomb
    #:urandom
    #:grandom
-   ;; special variables
+   ;; rounding
+   #:rounded-int
+   #:rounded-int-ceiling
+   #:rounded-int-floor
+   #:rounded-int-round
+   #:rounded-int-truncate
+   #:fractional
+   #:ceiling
+   #:floor
+   #:round
+   #:truncate
+   #:modf
+   #:fmod
+   #:remainder
+   #:remainder-quot
+   ;; special constants
    #:*mpfr-version*
    #:*mpfr-features*
    )
@@ -153,6 +168,10 @@
    #:<=
    #:=
    #:/=
+   #:ceiling
+   #:floor
+   #:round
+   #:truncate
    ))
 
 (in-package :sb-mpfr)
@@ -171,8 +190,6 @@
       (return-from %load-mpfr nil)))
   t)
 
-(define-alien-routine mpfr_get_version c-string)
-
 (defun load-mpfr (&key (persistently t))
   (setf *mpfr-version* nil
         *mpfr-features* nil
@@ -183,7 +200,9 @@
     )
   (let ((success (%load-mpfr)))
     (when success
-      (setf *mpfr-version* (mpfr_get_version)))
+      (setf *mpfr-version* 
+            (alien-funcall (extern-alien "mpfr_get_version"
+                                         (function c-string)))))
     (cond ((null *mpfr-version*))
           ((string<= *mpfr-version* "3.1")
            (warn "SB-MPFR requires at least MPFR version 3.1")
@@ -960,7 +979,7 @@
 
 (define-alien-routine mpfr_remquo int
   (r (* (struct mpfrfloat)))
-  (q (* int))
+  (q (* long))
   (x (* (struct mpfrfloat)))
   (y (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
@@ -1609,3 +1628,66 @@
                           ref
                           *mpfr-rnd*)))
     (values result1 result2 i)))
+
+
+;;; integer and remainder related functions / rounding
+
+(define-onearg-mpfr-funs
+    ((rounded-int mpfr_rint)
+     (rounded-int-ceiling mpfr_rint_ceil)
+     (rounded-int-floor mpfr_rint_floor)
+     (rounded-int-round mpfr_rint_round)
+     (rounded-int-truncate mpfr_rint_trunc)
+     (fractional mpfr_frac)))
+
+(defmacro define-onearg-no-rnd-mpfr-funs (funs)
+  (loop for (clfun mfun) in funs
+        collect `(defun ,clfun (x)
+                   (let* ((result (make-mpfr-float))
+                          (i (,mfun (mpfr-float-ref result)
+                                    (mpfr-float-ref x))))
+                     (values result i)))
+          into defines
+        finally (return `(progn
+                           ,@defines))))
+
+(define-onearg-no-rnd-mpfr-funs
+    ((ceil mpfr_ceil)
+     (floor mpfr_floor)
+     (round mpfr_round)
+     (truncate mpfr_trunc)))
+
+(defun modf (x)
+  (let* ((integral (make-mpfr-float))
+         (fractional (make-mpfr-float))
+         (i (mpfr_modf (mpfr-float-ref integral)
+                       (mpfr-float-ref fractional)
+                       (mpfr-float-ref x)
+                       *mpfr-rnd*)))
+    (values integral fractional i)))
+
+(defun fmod (x y)
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_fmod (mpfr-float-ref result)
+                       (mpfr-float-ref x)
+                       (mpfr-float-ref y)
+                       *mpfr-rnd*)))
+    (values result i)))
+
+(defun remainder (x y)
+  (let* ((result (make-mpfr-float))
+         (i (mpfr_remainder (mpfr-float-ref result)
+                            (mpfr-float-ref x)
+                            (mpfr-float-ref y)
+                            *mpfr-rnd*)))
+    (values result i)))
+
+(defun remainder-quot (x y)
+  (with-alien ((q long))
+    (let* ((result (make-mpfr-float))
+           (i (mpfr_remquo (mpfr-float-ref result)
+                           (addr q)
+                           (mpfr-float-ref x)
+                           (mpfr-float-ref y)
+                           *mpfr-rnd*)))
+      (values result q i))))
