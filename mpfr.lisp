@@ -1,5 +1,9 @@
 (defpackage :sb-mpfr 
   (:use "COMMON-LISP" "SB-ALIEN" "SB-C-CALL")
+  (:import-from "SB-GMP"
+                #:make-gmp-rstate
+                #:make-gmp-rstate-lc
+                #:rand-seed)
   (:export
    ;; parameters
    #:*mpfr-precision*
