@@ -5,8 +5,12 @@
                 #:make-gmp-rstate-lc
                 #:rand-seed)
   (:export
+   ;; +mpfr-precision+ is a pseudo-constant
+   ;; Do not set via LET but use the two methods below!
+   #:+mpfr-precision+
+   #:set-precision
+   #:with-precision
    ;; parameters
-   #:*mpfr-precision*
    #:*mpfr-rnd*
    #:*mpfr-base*
    ;; arithmetic operations
@@ -242,6 +246,7 @@
                  mpfr_set_inf
                  mpfr_set_zero
                  mpfr_get_default_prec
+                 mpfr_set_default_prec
                  mpfr_get_str
                  mpfr_free_str))
 
@@ -291,6 +296,9 @@
   (sign int))
 
 (define-alien-routine mpfr_get_default_prec long)
+
+(define-alien-routine mpfr_set_default_prec void
+  (prec long))
 
 (define-alien-routine mpfr_get_str (* char)
   (str (* char))
@@ -987,7 +995,7 @@
 
 ;;;; lisp interface
 
-(defparameter *mpfr-precision* (mpfr_get_default_prec))
+(defparameter +mpfr-precision+ (mpfr_get_default_prec))
 (defparameter *mpfr-rnd* :mpfr_rndn)
 (defparameter *mpfr-base* 10)
 
@@ -998,7 +1006,7 @@
   (ref (make-alien (struct mpfrfloat))
    :type (alien (* (struct mpfrfloat))) :read-only t))
 
-(defun make-mpfr-float (&optional (precision *mpfr-precision*))
+(defun make-mpfr-float (&optional (precision +mpfr-precision+))
   (declare (optimize (speed 3) (space 3)))
   (let* ((float (%make-mpfr-float))
          (ref (mpfr-float-ref float)))
@@ -1009,6 +1017,19 @@
                              (free-alien ref)))
     float))
 
+(defmacro with-precision (value &body body)
+  `(let* ((old +mpfr-precision+)
+          (+mpfr-precision+ ,value))
+     (unwind-protect 
+          (progn
+            (mpfr_set_default_prec ,value)
+            ,@body)
+       (mpfr_set_default_prec old))))
+
+(defun set-precision (value)
+  (check-type value (unsigned-byte #.sb-vm:n-word-bits))
+  (mpfr_set_default_prec value)
+  (setf +mpfr-precision+ value))
 
 ;;; printing and reader syntax
 
