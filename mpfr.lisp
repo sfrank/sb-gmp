@@ -239,7 +239,13 @@
 
 (declaim (inline mpfr_init2
                  mpfr_clear
+                 mpfr_set
+                 mpfr_set_ui
+                 mpfr_set_si
+                 mpfr_set_flt
                  mpfr_set_d
+                 mpfr_set_z
+                 mpfr_set_q
                  mpfr_set_nan
                  mpfr_set_inf
                  mpfr_set_zero
@@ -280,6 +286,16 @@
 (define-alien-routine mpfr_set_d void
   (x (* (struct mpfrfloat)))
   (op double-float)
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_set_z void
+  (x (* (struct mpfrfloat)))
+  (op (* (struct sb-gmp::gmpint)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_set_q void
+  (x (* (struct mpfrfloat)))
+  (op (* (struct sb-gmp::gmprat)))
   (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_set_nan void
