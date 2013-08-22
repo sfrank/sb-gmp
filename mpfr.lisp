@@ -735,6 +735,13 @@
      mpfr_agm
      mpfr_hypot))
 
+(declaim (inline mpfr_fac_ui
+                 mpfr_zeta_ui
+                 mpfr_jn
+                 mpfr_yn
+                 mpfr_fma
+                 mpfr_fms))
+
 (define-alien-routine mpfr_fac_ui int
   (r (* (struct mpfrfloat)))
   (op unsigned-long)
@@ -789,6 +796,7 @@
      mpfr_const_euler
      mpfr_const_catalan))
 
+(declaim (inline sum))
 (define-alien-routine mpfr_sum int
   (r (* (struct mpfrfloat)))
   (tab (* (* (struct mpfrfloat))))
@@ -863,6 +871,7 @@
      mpfr_integer_p
      mpfr_regular_p))
 
+(declaim (inline mpfr_sgn))
 (define-alien-routine mpfr_sgn int
   (op (* (struct mpfrfloat))))
 
@@ -925,6 +934,10 @@
      mpfr_erangeflag_p))
 
 
+(declaim (inline mpfr_urandomb
+                 mpfr_urandom
+                 mpfr_grandom))
+
 (define-alien-routine mpfr_urandomb int
   (op (* (struct mpfrfloat)))
   (s (* (struct sb-gmp::gmprandstate))))
@@ -950,6 +963,15 @@
      mpfr_rint_round
      mpfr_rint_trunc
      mpfr_frac))
+
+(declaim (inline mpfr_ceil
+                 mpfr_floor
+                 mpfr_round
+                 mpfr_trunc
+                 mpfr_modf
+                 mpfr_fmod
+                 mpfr_remainder
+                 mpfr_remquo))
 
 (define-alien-routine mpfr_ceil int
   (r (* (struct mpfrfloat)))
