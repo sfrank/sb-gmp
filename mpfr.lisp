@@ -144,8 +144,7 @@
    #:remainder-quot
    ;; special constants
    #:*mpfr-version*
-   #:*mpfr-features*
-   )
+   #:*mpfr-features*)
   (:shadow
    #:sqrt
    #:abs
@@ -175,8 +174,7 @@
    #:ceiling
    #:floor
    #:round
-   #:truncate
-   ))
+   #:truncate))
 
 (in-package :sb-mpfr)
 
@@ -308,11 +306,18 @@
   (x (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
+;;; conversion functions
+
 (define-alien-routine mpfr_get_flt float
   (op (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_get_d double
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_get_z int
+  (res (* (struct sb-gmp::gmpint)))
   (op (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
