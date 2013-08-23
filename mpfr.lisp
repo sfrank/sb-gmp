@@ -142,6 +142,8 @@
    #:fmod
    #:remainder
    #:remainder-quot
+   ;; conversion
+   #:coerce
    ;; special constants
    #:*mpfr-version*
    #:*mpfr-features*)
@@ -174,7 +176,8 @@
    #:ceiling
    #:floor
    #:round
-   #:truncate))
+   #:truncate
+   #:coerce))
 
 (in-package :sb-mpfr)
 
@@ -252,7 +255,7 @@
                  mpfr_get_default_prec
                  mpfr_set_default_prec
                  mpfr_get_str
-                 mpfr_free_str))
+                 ))
 
 (define-alien-routine mpfr_init2 void
   (x (* (struct mpfrfloat)))
@@ -324,11 +327,27 @@
 
 ;;; conversion functions
 
+(declaim (inline mpfr_get_flt
+                 mpfr_get_d
+                 mpfr_get_si
+                 mpfr_get_ui
+                 mpfr_get_z
+                 mpfr_free_str
+                 mpfr_set_str))
+
 (define-alien-routine mpfr_get_flt float
   (op (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
 (define-alien-routine mpfr_get_d double
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_get_si long
+  (op (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_get_ui unsigned-long
   (op (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
@@ -1755,3 +1774,64 @@
                            (mpfr-float-ref y)
                            *mpfr-rnd*)))
       (values result q i))))
+
+
+;;; conversion
+
+(declaim (inline mpfr_fits_ulong_p mpfr_fits_slong_p))
+
+(define-alien-routine mpfr_fits_ulong_p boolean
+  (x (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(define-alien-routine mpfr_fits_slong_p boolean
+  (x (* (struct mpfrfloat)))
+  (rnd mpfr_rnd_enum))
+
+(defun coerce (x type)
+  (cond
+    ((typep x 'mpfr-float)
+     (let ((x-ref (mpfr-float-ref x)))
+       (case type
+         (single-float
+          (mpfr_get_flt x-ref *mpfr-rnd*))
+         (double-float
+          (mpfr_get_d x-ref *mpfr-rnd*))
+         (mpfr-float
+          (let ((result (make-mpfr-float)))
+            (mpfr_set (mpfr-float-ref result) x-ref *mpfr-rnd*)
+            result))
+         (integer
+          (unless (numberp x)
+            (error "Cannot coerce ~s to ~s. Argument must be an actual number."
+                   x type))
+          (cond
+            ((mpfr_fits_slong_p x-ref *mpfr-rnd*)
+             (mpfr_get_si x-ref *mpfr-rnd*))
+            ((mpfr_fits_ulong_p x-ref *mpfr-rnd*)
+             (mpfr_get_ui x-ref *mpfr-rnd*))
+            (t
+             (sb-gmp::with-gmp-mpz-results (rop)
+               (mpfr_get_z (addr rop) x-ref *mpfr-rnd*)))))
+         (t 
+          (error "TYPE must be one of SINGLE-FLOAT, DOUBLE-FLOAT or INTEGER.")))))
+    ((eql type 'mpfr-float)
+     (let ((result (make-mpfr-float)))
+       (etypecase x
+         ((signed-byte #.sb-vm:n-word-bits)
+          (mpfr_set_si (mpfr-float-ref result) x *mpfr-rnd*))
+         ((unsigned-byte #.sb-vm:n-word-bits)
+          (mpfr_set_ui (mpfr-float-ref result) x *mpfr-rnd*))
+         (integer
+          (sb-gmp::with-mpz-vars ((x gx))
+            (mpfr_set_z (mpfr-float-ref result) (addr gx) *mpfr-rnd*)))
+         (single-float
+          (mpfr_set_flt (mpfr-float-ref result) x *mpfr-rnd*))
+         (double-float
+          (mpfr_set_d (mpfr-float-ref result) x *mpfr-rnd*))
+         (ratio
+          (sb-gmp::with-mpq-var (x qx)
+            (mpfr_set_q (mpfr-float-ref result) (addr qx) *mpfr-rnd*))))
+       result))
+    (t
+     (error "Unable to handle the combination of ~S and ~S." x type))))
