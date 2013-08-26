@@ -12,15 +12,13 @@
                 :pathname ""
                 :components ((:file "mpfr")))))
 
-#+(or)
 (defsystem sb-mpfr-tests
   :depends-on (sb-rt sb-mpfr)
-  :components ((:file "testsmpfr")))
+  :components ((:file "tests-mpfr")))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :sb-mpfr))))
   (provide 'sb-mpfr))
 
-#+(or)
 (defmethod perform ((o test-op) (c (eql (find-system :sb-mpfr))))
   (operate 'load-op 'sb-mpfr)
   (cond ((member :sb-mpfr *features*)
@@ -29,7 +27,6 @@
         (t
          (warn "unable to test sb-mpfr: libmpfr unavailable"))))
 
-#+(or)
 (defmethod perform ((o test-op) (c (eql (find-system :sb-mpfr-tests))))
   (multiple-value-bind (soft strict pending)
       (funcall (intern "DO-TESTS" (find-package "SB-RT")))
