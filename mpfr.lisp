@@ -10,9 +10,10 @@
    #:+mpfr-precision+
    #:set-precision
    #:with-precision
-   ;; parameters
+   ;; parameters and types
    #:*mpfr-rnd*
    #:*mpfr-base*
+   #:mpfr-float
    ;; arithmetic operations
    #:make-mpfr-float
    #:mpfr-float-to-string
