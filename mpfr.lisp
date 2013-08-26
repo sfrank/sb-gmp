@@ -1113,8 +1113,8 @@
             (format stream "~a" str)
             (case sign
               (0 (format stream "0"))
-              (1 (format stream ".~a E+~s" str exp))
-              (-1 (format stream "-.~a E+~s" (subseq str 1) exp)))))))
+              (1 (format stream ".~ae+~s" str exp))
+              (-1 (format stream "-.~ae+~s" (subseq str 1) exp)))))))
 
 (defun mpfr-float-to-string (x &optional (rnd *mpfr-rnd*))
   (let ((xr (mpfr-float-ref x)))
