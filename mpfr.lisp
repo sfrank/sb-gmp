@@ -837,7 +837,7 @@
      mpfr_const_euler
      mpfr_const_catalan))
 
-(declaim (inline sum))
+(declaim (inline mpfr_sum))
 (define-alien-routine mpfr_sum int
   (r (* (struct mpfrfloat)))
   (tab (* (* (struct mpfrfloat))))
