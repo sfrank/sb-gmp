@@ -1141,32 +1141,32 @@
 
 ;;; arithmetic functions
 
-(defun add (x y)
+(defun add (x y &optional (round *mpfr-rnd*))
   (if (typep x 'mpfr-float)
       (let* ((res (make-mpfr-float))
              (r (mpfr-float-ref res))
              (xr (mpfr-float-ref x))
              (i (etypecase y
                   (mpfr-float 
-                   (mpfr_add r xr (mpfr-float-ref y) *mpfr-rnd*))
+                   (mpfr_add r xr (mpfr-float-ref y) round))
                   ((unsigned-byte #.sb-vm:n-word-bits)
-                   (mpfr_add_ui r xr y *mpfr-rnd*))
+                   (mpfr_add_ui r xr y round))
                   ((signed-byte #.sb-vm:n-word-bits)
-                   (mpfr_add_si r xr y *mpfr-rnd*))
+                   (mpfr_add_si r xr y round))
                   (double-float
-                   (mpfr_add_d r xr y *mpfr-rnd*))
+                   (mpfr_add_d r xr y round))
                   (integer
                    (sb-gmp::with-mpz-vars ((y gy))
-                     (mpfr_add_z r xr (addr gy) *mpfr-rnd*)))
+                     (mpfr_add_z r xr (addr gy) round)))
                   (rational
                    (sb-gmp::with-mpq-var (y qy)
-                     (mpfr_add_q r xr (addr qy) *mpfr-rnd*))))))
+                     (mpfr_add_q r xr (addr qy) round))))))
         (values res i))
       (etypecase y
         (mpfr-float
          (add y x)))))
 
-(defun sub (x y)
+(defun sub (x y &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
          (i (etypecase x
@@ -1174,68 +1174,68 @@
                (let ((xr (mpfr-float-ref x)))
                  (etypecase y
                    (mpfr-float 
-                    (mpfr_sub r xr (mpfr-float-ref y) *mpfr-rnd*))
+                    (mpfr_sub r xr (mpfr-float-ref y) round))
                    ((unsigned-byte #.sb-vm:n-word-bits)
-                    (mpfr_sub_ui r xr y *mpfr-rnd*))
+                    (mpfr_sub_ui r xr y round))
                    ((signed-byte #.sb-vm:n-word-bits)
-                    (mpfr_sub_si r xr y *mpfr-rnd*))
+                    (mpfr_sub_si r xr y round))
                    (double-float
-                    (mpfr_sub_d r xr y *mpfr-rnd*))
+                    (mpfr_sub_d r xr y round))
                    (integer
                     (sb-gmp::with-mpz-vars ((y gy))
-                      (mpfr_sub_z r xr (addr gy) *mpfr-rnd*)))
+                      (mpfr_sub_z r xr (addr gy) round)))
                    (rational
                     (sb-gmp::with-mpq-var (y qy)
-                      (mpfr_sub_q r xr (addr qy) *mpfr-rnd*))))))
+                      (mpfr_sub_q r xr (addr qy) round))))))
               ((unsigned-byte #.sb-vm:n-word-bits)
                (etypecase y
                  (mpfr-float 
-                  (mpfr_ui_sub r x (mpfr-float-ref y) *mpfr-rnd*))))
+                  (mpfr_ui_sub r x (mpfr-float-ref y) round))))
               ((signed-byte #.sb-vm:n-word-bits)
                (etypecase y
                  (mpfr-float 
-                  (mpfr_si_sub r x (mpfr-float-ref y) *mpfr-rnd*))))
+                  (mpfr_si_sub r x (mpfr-float-ref y) round))))
               (double-float
                (etypecase y
                  (mpfr-float 
-                  (mpfr_d_sub r x (mpfr-float-ref y) *mpfr-rnd*))))
+                  (mpfr_d_sub r x (mpfr-float-ref y) round))))
               (integer
                (etypecase y
                  (mpfr-float
                   (sb-gmp::with-mpz-vars ((x gx))
-                    (mpfr_z_sub r (addr gx) (mpfr-float-ref y) *mpfr-rnd*))))))))
+                    (mpfr_z_sub r (addr gx) (mpfr-float-ref y) round))))))))
     (values res i)))
 
-(defun mul (x y)
+(defun mul (x y &optional (round *mpfr-rnd*))
   (if (typep x 'mpfr-float)
       (let* ((res (make-mpfr-float))
              (r (mpfr-float-ref res))
              (xr (mpfr-float-ref x))
              (i (etypecase y
                   (mpfr-float 
-                   (mpfr_mul r xr (mpfr-float-ref y) *mpfr-rnd*))
+                   (mpfr_mul r xr (mpfr-float-ref y) round))
                   ((unsigned-byte #.sb-vm:n-word-bits)
-                   (mpfr_mul_ui r xr y *mpfr-rnd*))
+                   (mpfr_mul_ui r xr y round))
                   ((signed-byte #.sb-vm:n-word-bits)
-                   (mpfr_mul_si r xr y *mpfr-rnd*))
+                   (mpfr_mul_si r xr y round))
                   (double-float
-                   (mpfr_mul_d r xr y *mpfr-rnd*))
+                   (mpfr_mul_d r xr y round))
                   (integer
                    (sb-gmp::with-mpz-vars ((y gy))
-                     (mpfr_mul_z r xr (addr gy) *mpfr-rnd*)))
+                     (mpfr_mul_z r xr (addr gy) round)))
                   (rational
                    (sb-gmp::with-mpq-var (y qy)
-                     (mpfr_mul_q r xr (addr qy) *mpfr-rnd*))))))
+                     (mpfr_mul_q r xr (addr qy) round))))))
         (values res i))
       (etypecase y
         (mpfr-float
          (mul y x)))))
 
-(defun sqare (x)
+(defun sqare (x &optional (round *mpfr-rnd*))
   (let ((r (make-mpfr-float)))
-    (values r (mpfr_sqr (mpfr-float-ref r) (mpfr-float-ref x) *mpfr-rnd*))))
+    (values r (mpfr_sqr (mpfr-float-ref r) (mpfr-float-ref x) round))))
 
-(defun div (x y)
+(defun div (x y &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
          (i (etypecase x
@@ -1243,63 +1243,63 @@
                (let ((xr (mpfr-float-ref x)))
                  (etypecase y
                    (mpfr-float 
-                    (mpfr_div r xr (mpfr-float-ref y) *mpfr-rnd*))
+                    (mpfr_div r xr (mpfr-float-ref y) round))
                    ((unsigned-byte #.sb-vm:n-word-bits)
-                    (mpfr_div_ui r xr y *mpfr-rnd*))
+                    (mpfr_div_ui r xr y round))
                    ((signed-byte #.sb-vm:n-word-bits)
-                    (mpfr_div_si r xr y *mpfr-rnd*))
+                    (mpfr_div_si r xr y round))
                    (double-float
-                    (mpfr_div_d r xr y *mpfr-rnd*))
+                    (mpfr_div_d r xr y round))
                    (integer
                     (sb-gmp::with-mpz-vars ((y gy))
-                      (mpfr_div_z r xr (addr gy) *mpfr-rnd*)))
+                      (mpfr_div_z r xr (addr gy) round)))
                    (rational
                     (sb-gmp::with-mpq-var (y qy)
-                      (mpfr_div_q r xr (addr qy) *mpfr-rnd*))))))
+                      (mpfr_div_q r xr (addr qy) round))))))
               ((unsigned-byte #.sb-vm:n-word-bits)
                (etypecase y
                  (mpfr-float 
-                  (mpfr_ui_div r x (mpfr-float-ref y) *mpfr-rnd*))))
+                  (mpfr_ui_div r x (mpfr-float-ref y) round))))
               ((signed-byte #.sb-vm:n-word-bits)
                (etypecase y
                  (mpfr-float 
-                  (mpfr_si_div r x (mpfr-float-ref y) *mpfr-rnd*))))
+                  (mpfr_si_div r x (mpfr-float-ref y) round))))
               (double-float
                (etypecase y
                  (mpfr-float 
-                  (mpfr_d_div r x (mpfr-float-ref y) *mpfr-rnd*)))))))
+                  (mpfr_d_div r x (mpfr-float-ref y) round)))))))
     (values res i)))
 
-(defun sqrt (x)
+(defun sqrt (x &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
          (i (etypecase x
               ((unsigned-byte #.sb-vm:n-word-bits)
-               (mpfr_sqrt_ui r x *mpfr-rnd*))
+               (mpfr_sqrt_ui r x round))
               (mpfr-float
-               (mpfr_sqrt r (mpfr-float-ref x) *mpfr-rnd*)))))
+               (mpfr_sqrt r (mpfr-float-ref x) round)))))
     (values res i)))
 
-(defun reciprocal-sqrt (x)
+(defun reciprocal-sqrt (x &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
-         (i (mpfr_rec_sqrt r (mpfr-float-ref x) *mpfr-rnd*)))
+         (i (mpfr_rec_sqrt r (mpfr-float-ref x) round)))
     (values res i)))
 
-(defun cubic-root (x)
+(defun cubic-root (x &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
-         (i (mpfr_cbrt r (mpfr-float-ref x) *mpfr-rnd*)))
+         (i (mpfr_cbrt r (mpfr-float-ref x) round)))
     (values res i)))
 
-(defun k-root (x k)
+(defun k-root (x k &optional (round *mpfr-rnd*))
   (check-type k (unsigned-byte #.sb-vm:n-word-bits))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
-         (i (mpfr_root r (mpfr-float-ref x) k *mpfr-rnd*)))
+         (i (mpfr_root r (mpfr-float-ref x) k round)))
     (values res i)))
 
-(defun power (x y)
+(defun power (x y &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
          (i (etypecase x
@@ -1307,69 +1307,69 @@
                (let ((xr (mpfr-float-ref x)))
                  (etypecase y
                    (mpfr-float 
-                    (mpfr_pow r xr (mpfr-float-ref y) *mpfr-rnd*))
+                    (mpfr_pow r xr (mpfr-float-ref y) round))
                    ((unsigned-byte #.sb-vm:n-word-bits)
-                    (mpfr_pow_ui r xr y *mpfr-rnd*))
+                    (mpfr_pow_ui r xr y round))
                    ((signed-byte #.sb-vm:n-word-bits)
-                    (mpfr_pow_si r xr y *mpfr-rnd*))
+                    (mpfr_pow_si r xr y round))
                    (integer
                     (sb-gmp::with-mpz-vars ((y gy))
-                      (mpfr_pow_z r xr (addr gy) *mpfr-rnd*))))))
+                      (mpfr_pow_z r xr (addr gy) round))))))
               ((unsigned-byte #.sb-vm:n-word-bits)
                (etypecase y
                  (mpfr-float 
-                  (mpfr_ui_pow r x (mpfr-float-ref y) *mpfr-rnd*)))))))
+                  (mpfr_ui_pow r x (mpfr-float-ref y) round)))))))
     (values res i)))
 
-(defun negate (x)
+(defun negate (x &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
-         (i (mpfr_neg r (mpfr-float-ref x) *mpfr-rnd*)))
+         (i (mpfr_neg r (mpfr-float-ref x) round)))
     (values res i)))
 
-(defun abs (x)
+(defun abs (x &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
-         (i (mpfr_abs r (mpfr-float-ref x) *mpfr-rnd*)))
+         (i (mpfr_abs r (mpfr-float-ref x) round)))
     (values res i)))
 
-(defun dim (x y)
+(defun dim (x y &optional (round *mpfr-rnd*))
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
-         (i (mpfr_dim r (mpfr-float-ref x) (mpfr-float-ref y) *mpfr-rnd*)))
+         (i (mpfr_dim r (mpfr-float-ref x) (mpfr-float-ref y) round)))
     (values res i)))
 
-(defun mul-2-raised (x y)
+(defun mul-2-raised (x y &optional (round *mpfr-rnd*))
   "Compute X*(2^Y)."
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
          (i (etypecase y
               ((unsigned-byte #.sb-vm:n-word-bits)
-               (mpfr_mul_2ui r (mpfr-float-ref x) y *mpfr-rnd*))
+               (mpfr_mul_2ui r (mpfr-float-ref x) y round))
               ((signed-byte #.sb-vm:n-word-bits)
-               (mpfr_mul_2si r (mpfr-float-ref x) y *mpfr-rnd*)))))
+               (mpfr_mul_2si r (mpfr-float-ref x) y round)))))
     (values res i)))
 
-(defun div-2-raised (x y)
+(defun div-2-raised (x y &optional (round *mpfr-rnd*))
   "Compute X/(2^Y)."
   (let* ((res (make-mpfr-float))
          (r (mpfr-float-ref res))
          (i (etypecase y
               ((unsigned-byte #.sb-vm:n-word-bits)
-               (mpfr_div_2ui r (mpfr-float-ref x) y *mpfr-rnd*))
+               (mpfr_div_2ui r (mpfr-float-ref x) y round))
               ((signed-byte #.sb-vm:n-word-bits)
-               (mpfr_div_2si r (mpfr-float-ref x) y *mpfr-rnd*)))))
+               (mpfr_div_2si r (mpfr-float-ref x) y round)))))
     (values res i)))
 
 ;;; special functions
 
 (defmacro define-onearg-mpfr-funs (funs)
   (loop for (clfun mfun) in funs
-        collect `(defun ,clfun (x)
+        collect `(defun ,clfun (x &optional (round *mpfr-rnd*))
                    (let* ((result (make-mpfr-float))
                           (i (,mfun (mpfr-float-ref result)
                                     (mpfr-float-ref x)
-                                    *mpfr-rnd*)))
+                                    round)))
                      (values result i)))
           into defines
         finally (return `(progn
@@ -1414,113 +1414,113 @@
      (y1 mpfr_y1)
      (ai mpfr_ai)))
 
-(defun atan (y &optional x)
+(defun atan (y &optional x (round *mpfr-rnd*))
   (if x
       (let* ((result (make-mpfr-float))
              (i (mpfr_atan2 (mpfr-float-ref result)
                             (mpfr-float-ref y)
                             (mpfr-float-ref x)
-                            *mpfr-rnd*)))
+                            round)))
         (values result i))
       (let* ((result (make-mpfr-float))
              (i (mpfr_atan (mpfr-float-ref result)
                            (mpfr-float-ref y)
-                           *mpfr-rnd*)))
+                           round)))
         (values result i))))
 
-(defun sin-cos (x)
+(defun sin-cos (x &optional (round *mpfr-rnd*))
   (let* ((sin (make-mpfr-float))
          (cos (make-mpfr-float))
          (i (mpfr_sin_cos (mpfr-float-ref sin)
                           (mpfr-float-ref cos)
                           (mpfr-float-ref x)
-                          *mpfr-rnd*)))
+                          round)))
     (values sin cos i)))
 
-(defun sinh-cosh (x)
+(defun sinh-cosh (x &optional (round *mpfr-rnd*))
   (let* ((sin (make-mpfr-float))
          (cos (make-mpfr-float))
          (i (mpfr_sinh_cosh (mpfr-float-ref sin)
                             (mpfr-float-ref cos)
                             (mpfr-float-ref x)
-                            *mpfr-rnd*)))
+                            round)))
     (values sin cos i)))
 
-(defun arithmetic-geometric-mean (u v)
+(defun arithmetic-geometric-mean (u v &optional (round *mpfr-rnd*))
   (let* ((result (make-mpfr-float))
          (i (mpfr_agm (mpfr-float-ref result)
                       (mpfr-float-ref u)
                       (mpfr-float-ref v)
-                      *mpfr-rnd*)))
+                      round)))
     (values result i)))
 
-(defun hypot (x y)
+(defun hypot (x y &optional (round *mpfr-rnd*))
   (let* ((result (make-mpfr-float))
          (i (mpfr_hypot (mpfr-float-ref result)
                         (mpfr-float-ref x)
                         (mpfr-float-ref y)
-                        *mpfr-rnd*)))
+                        round)))
     (values result i)))
 
-(defun fac (x)
+(defun fac (x &optional (round *mpfr-rnd*))
   (let* ((result (make-mpfr-float))
          (i (mpfr_fac_ui (mpfr-float-ref result)
-                        x
-                        *mpfr-rnd*)))
+                         x
+                         round)))
     (values result i)))
 
-(defun zeta (x)
+(defun zeta (x &optional (round *mpfr-rnd*))
   (let* ((result (make-mpfr-float))
          (i (etypecase x
               (mpfr-float
                (mpfr_zeta (mpfr-float-ref result)
                           (mpfr-float-ref x)
-                          *mpfr-rnd*))
+                          round))
               ((unsigned-byte #.sb-vm:n-word-bits)
                (mpfr_zeta_ui (mpfr-float-ref result)
                              x
-                             *mpfr-rnd*)))))
+                             round)))))
     (values result i)))
 
-(defun jn (n x)
+(defun jn (n x &optional (round *mpfr-rnd*))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (let* ((result (make-mpfr-float))
          (i (mpfr_jn (mpfr-float-ref result)
                      n
                      (mpfr-float-ref x)
-                     *mpfr-rnd*)))
+                     round)))
     (values result i)))
 
-(defun yn (n x)
+(defun yn (n x &optional (round *mpfr-rnd*))
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (let* ((result (make-mpfr-float))
          (i (mpfr_yn (mpfr-float-ref result)
                      n
                      (mpfr-float-ref x)
-                     *mpfr-rnd*)))
+                     round)))
     (values result i)))
 
-(defun fma (x y z)
+(defun fma (x y z &optional (round *mpfr-rnd*))
   "fma X Y Z = (X * Y) + Z"
   (let* ((result (make-mpfr-float))
          (i (mpfr_fma (mpfr-float-ref result)
                       (mpfr-float-ref x)
                       (mpfr-float-ref y)
                       (mpfr-float-ref z)
-                      *mpfr-rnd*)))
+                      round)))
     (values result i)))
 
-(defun fms (x y z)
+(defun fms (x y z &optional (round *mpfr-rnd*))
   "fma X Y Z = (X * Y) - Z"
   (let* ((result (make-mpfr-float))
          (i (mpfr_fms (mpfr-float-ref result)
                       (mpfr-float-ref x)
                       (mpfr-float-ref y)
                       (mpfr-float-ref z)
-                      *mpfr-rnd*)))
+                      round)))
     (values result i)))
 
-(defun sum (seq)
+(defun sum (seq &optional (round *mpfr-rnd*))
   (let ((length (length seq))
         (idx -1))
     (declare (type (integer -1 #.most-positive-fixnum) idx))
@@ -1535,7 +1535,7 @@
              (let ((i (mpfr_sum (mpfr-float-ref result)
                                 ar
                                 length
-                                *mpfr-rnd*)))
+                                round)))
                (values result i)))
         (free-alien ar)))))
 
@@ -1544,10 +1544,10 @@
 
 (defmacro define-const-mpfr-funs (funs)
   (loop for (fname mname) in funs
-        collect `(defun ,fname ()
+        collect `(defun ,fname (&optional (round *mpfr-rnd*))
                    (let* ((result (make-mpfr-float))
                           (i (,mname (mpfr-float-ref result)
-                                     *mpfr-rnd*)))
+                                     round)))
                      (values result i)))
           into defines
         finally (return `(progn
@@ -1689,16 +1689,16 @@
                            ref)))
     (values result i)))
 
-(defun urandom (state)
+(defun urandom (state &optional (round *mpfr-rnd*))
   (check-type state sb-gmp::gmp-rstate)
   (let* ((ref (sb-gmp::gmp-rstate-ref state))
          (result (make-mpfr-float))
          (i (mpfr_urandom (mpfr-float-ref result)
                           ref
-                          *mpfr-rnd*)))
+                          round)))
     (values result i)))
 
-(defun grandom (state)
+(defun grandom (state &optional (round *mpfr-rnd*))
   (check-type state sb-gmp::gmp-rstate)
   (let* ((ref (sb-gmp::gmp-rstate-ref state))
          (result1 (make-mpfr-float))
@@ -1706,7 +1706,7 @@
          (i (mpfr_grandom (mpfr-float-ref result1)
                           (mpfr-float-ref result2)
                           ref
-                          *mpfr-rnd*)))
+                          round)))
     (values result1 result2 i)))
 
 
@@ -1737,39 +1737,39 @@
      (round mpfr_round)
      (truncate mpfr_trunc)))
 
-(defun modf (x)
+(defun modf (x &optional (round *mpfr-rnd*))
   (let* ((integral (make-mpfr-float))
          (fractional (make-mpfr-float))
          (i (mpfr_modf (mpfr-float-ref integral)
                        (mpfr-float-ref fractional)
                        (mpfr-float-ref x)
-                       *mpfr-rnd*)))
+                       round)))
     (values integral fractional i)))
 
-(defun fmod (x y)
+(defun fmod (x y &optional (round *mpfr-rnd*))
   (let* ((result (make-mpfr-float))
          (i (mpfr_fmod (mpfr-float-ref result)
                        (mpfr-float-ref x)
                        (mpfr-float-ref y)
-                       *mpfr-rnd*)))
+                       round)))
     (values result i)))
 
-(defun remainder (x y)
+(defun remainder (x y &optional (round *mpfr-rnd*))
   (let* ((result (make-mpfr-float))
          (i (mpfr_remainder (mpfr-float-ref result)
                             (mpfr-float-ref x)
                             (mpfr-float-ref y)
-                            *mpfr-rnd*)))
+                            round)))
     (values result i)))
 
-(defun remainder-quot (x y)
+(defun remainder-quot (x y &optional (round *mpfr-rnd*))
   (with-alien ((q long))
     (let* ((result (make-mpfr-float))
            (i (mpfr_remquo (mpfr-float-ref result)
                            (addr q)
                            (mpfr-float-ref x)
                            (mpfr-float-ref y)
-                           *mpfr-rnd*)))
+                           round)))
       (values result q i))))
 
 
@@ -1785,50 +1785,50 @@
   (x (* (struct mpfrfloat)))
   (rnd mpfr_rnd_enum))
 
-(defun coerce (x type)
+(defun coerce (x type &optional (round *mpfr-rnd*))
   (cond
     ((typep x 'mpfr-float)
      (let ((x-ref (mpfr-float-ref x)))
        (case type
          (single-float
-          (mpfr_get_flt x-ref *mpfr-rnd*))
+          (mpfr_get_flt x-ref round))
          (double-float
-          (mpfr_get_d x-ref *mpfr-rnd*))
+          (mpfr_get_d x-ref round))
          (mpfr-float
           (let ((result (make-mpfr-float)))
-            (mpfr_set (mpfr-float-ref result) x-ref *mpfr-rnd*)
+            (mpfr_set (mpfr-float-ref result) x-ref round)
             result))
          (integer
           (unless (numberp x)
             (error "Cannot coerce ~s to ~s. Argument must be an actual number."
                    x type))
           (cond
-            ((mpfr_fits_slong_p x-ref *mpfr-rnd*)
-             (mpfr_get_si x-ref *mpfr-rnd*))
-            ((mpfr_fits_ulong_p x-ref *mpfr-rnd*)
-             (mpfr_get_ui x-ref *mpfr-rnd*))
+            ((mpfr_fits_slong_p x-ref round)
+             (mpfr_get_si x-ref round))
+            ((mpfr_fits_ulong_p x-ref round)
+             (mpfr_get_ui x-ref round))
             (t
              (sb-gmp::with-gmp-mpz-results (rop)
-               (mpfr_get_z (addr rop) x-ref *mpfr-rnd*)))))
+               (mpfr_get_z (addr rop) x-ref round)))))
          (t 
           (error "TYPE must be one of SINGLE-FLOAT, DOUBLE-FLOAT or INTEGER.")))))
     ((eql type 'mpfr-float)
      (let ((result (make-mpfr-float)))
        (etypecase x
          ((signed-byte #.sb-vm:n-word-bits)
-          (mpfr_set_si (mpfr-float-ref result) x *mpfr-rnd*))
+          (mpfr_set_si (mpfr-float-ref result) x round))
          ((unsigned-byte #.sb-vm:n-word-bits)
-          (mpfr_set_ui (mpfr-float-ref result) x *mpfr-rnd*))
+          (mpfr_set_ui (mpfr-float-ref result) x round))
          (integer
           (sb-gmp::with-mpz-vars ((x gx))
-            (mpfr_set_z (mpfr-float-ref result) (addr gx) *mpfr-rnd*)))
+            (mpfr_set_z (mpfr-float-ref result) (addr gx) round)))
          (single-float
-          (mpfr_set_flt (mpfr-float-ref result) x *mpfr-rnd*))
+          (mpfr_set_flt (mpfr-float-ref result) x round))
          (double-float
-          (mpfr_set_d (mpfr-float-ref result) x *mpfr-rnd*))
+          (mpfr_set_d (mpfr-float-ref result) x round))
          (ratio
           (sb-gmp::with-mpq-var (x qx)
-            (mpfr_set_q (mpfr-float-ref result) (addr qx) *mpfr-rnd*))))
+            (mpfr_set_q (mpfr-float-ref result) (addr qx) round))))
        result))
     (t
      (error "Unable to handle the combination of ~S and ~S." x type))))
