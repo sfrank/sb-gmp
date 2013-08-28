@@ -131,7 +131,7 @@ pre-allocated bignum. The allocated bignum-length must be (1+ COUNT)."
            (type (alien (* unsigned-long)) z)
            (type bignum-type b)
            (type bignum-index count))
-  (dotimes (i count (%normalize-bignum b count))
+  (dotimes (i count (%normalize-bignum b (1+ count)))
     (%bignum-set b i (deref z i))))
 
 (defun gmp-z-to-bignum-neg (z b count)
@@ -145,7 +145,7 @@ be (1+ COUNT)."
   (let ((carry 0)
         (add 1))
     (declare (type (mod 2) carry add))
-    (dotimes (i count b)
+    (dotimes (i count (%normalize-bignum b (1+ count)))
       (multiple-value-bind (value carry-tmp)
           (%add-with-carry
            (%lognot (deref z i)) add carry)
@@ -364,9 +364,9 @@ be (1+ COUNT)."
         collect size into sizes
         collect `(,gres (struct gmpint)) into declares
         collect `(__gmpz_init (addr ,gres)) into inits
-        collect `(,size (1+ (abs (slot ,gres 'mp_size))))
+        collect `(,size (abs (slot ,gres 'mp_size)))
           into resinits
-        collect `(,res (%allocate-bignum ,size))
+        collect `(,res (%allocate-bignum (1+,size)))
           into resinits
         collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
                                 (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res ,size)
@@ -449,8 +449,6 @@ be (1+ COUNT)."
         (__gmpz_tdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defun mpz-pow (base exp)
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type bignum-type base))
   (check-type exp (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (rop)
     (with-mpz-vars ((base gbase))
