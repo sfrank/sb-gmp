@@ -160,6 +160,23 @@
                  320613729464106236061704728914573914390
                  -285049280629101090500613812618405407883))
 
+(defun fac (n)
+  (loop for i from 1 to n
+        for fac = 1 then (* fac i)
+        finally (return fac)))
+
+(define-gmp-test (fac1)
+  (test-one-case 'fac 'mpz-fac
+                 6))
+
+(define-gmp-test (fac2)
+  (test-one-case 'fac 'mpz-fac
+                 63))
+
+(define-gmp-test (pow)
+  (test-one-case 'expt 'mpz-pow
+                 16 3))
+
 (define-gmp-test (mpz-nextprime :repeat 7
                                 :gmp-seed 6234
                                 :limbs (1+ (random #x2F)))
