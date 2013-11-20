@@ -448,7 +448,7 @@ be (1+ COUNT)."
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_tdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
-(defun mpz-pow (base exp)
+(defgmpfun mpz-pow (base exp)
   (check-type exp (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (rop)
     (with-mpz-vars ((base gbase))
@@ -481,38 +481,34 @@ be (1+ COUNT)."
 ;;; into a SBCL bignum at the end of the computation when the required
 ;;; bignum length is known.
 (defun mpz-probably-prime-p (n &optional (reps 25))
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (type integer n reps))
   (check-type reps fixnum)
   (with-mpz-vars ((n gn))
     (__gmpz_probab_prime_p (addr gn) reps)))
 
-(defun mpz-nextprime (a)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun mpz-nextprime (a)
   (with-gmp-mpz-results (prime)
     (with-mpz-vars ((a ga))
       (__gmpz_nextprime (addr prime) (addr ga)))))
 
-(defun mpz-fac (n)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun mpz-fac (n)
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_fac_ui (addr fac) n)))
 
-(defun %mpz-2fac (n)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun %mpz-2fac (n)
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
 
-(defun %mpz-mfac (n m)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun %mpz-mfac (n m)
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (check-type m (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (fac)
     (__gmpz_mfac_uiui (addr fac) n m)))
 
-(defun %mpz-primorial (n)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun %mpz-primorial (n)
   (check-type n (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (r)
     (__gmpz_primorial_ui (addr r) n)))
@@ -530,15 +526,13 @@ be (1+ COUNT)."
     (stubify mpz-mfac %mpz-mfac n m)
     (stubify mpz-primorial %mpz-primorial n)))
 
-(defun mpz-bin (n k)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun mpz-bin (n k)
   (check-type k (unsigned-byte #.sb-vm:n-word-bits))
   (with-gmp-mpz-results (r)
     (with-mpz-vars ((n gn))
       (__gmpz_bin_ui (addr r) (addr gn) k))))
 
-(defun mpz-fib2 (n)
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+(defgmpfun mpz-fib2 (n)
   ;; (let ((size (1+ (ceiling (* n (log 1.618034 2)) 64)))))
   ;; fibonacci number magnitude in bits is assymptotic to n(log_2 phi)
   ;; This is correct for the result but appears not to be enough for GMP
@@ -595,6 +589,12 @@ be (1+ COUNT)."
 (defstruct (gmp-rstate (:constructor %make-gmp-rstate))
   (ref (make-alien (struct gmprandstate))
    :type (alien (* (struct gmprandstate))) :read-only t))
+
+(declaim (sb-ext:maybe-inline make-gmp-rstate
+                              make-gmp-rstate-lc
+                              rand-seed
+                              random-bitcount
+                              random-int))
 
 (defun make-gmp-rstate ()
   "Instantiate a state for the GMP Mersenne-Twister random number generator."

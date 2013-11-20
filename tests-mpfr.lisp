@@ -24,5 +24,5 @@
               finally (return s))))))
 
 (defun sample-pi ()
-  (sb-mpfr:with-precision 400
-    (sb-mpfr:const-pi)))
+  (sb-mpfr:set-precision 400)
+  (sb-mpfr:const-pi))
