@@ -21,10 +21,11 @@
    #:mpz-probably-prime-p
    #:mpz-nextprime
    #:mpz-fac
-   ;; Following three are GMP >= 5.1 only
+   ;; the following functions are GMP >= 5.1 only
    #:mpz-2fac
    #:mpz-mfac
    #:mpz-primorial
+   ;; number theoretic functions
    #:mpz-bin
    #:mpz-fib2
    ;; random number generation
@@ -598,7 +599,7 @@ be (1+ COUNT)."
 
 (defun make-gmp-rstate ()
   "Instantiate a state for the GMP Mersenne-Twister random number generator."
-  (declare (optimize (speed 3) (space 3)))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
   (let* ((state (%make-gmp-rstate))
          (ref (gmp-rstate-ref state)))
     (__gmp_randinit_mt ref)
@@ -607,7 +608,7 @@ be (1+ COUNT)."
 
 (defun make-gmp-rstate-lc (a c m2exp)
   "Instantiate a state for the GMP linear congruential random number generator."
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (declare (optimize (speed 3) (space 3)))
   (check-type c (unsigned-byte #.sb-vm:n-word-bits))
   (check-type m2exp (unsigned-byte #.sb-vm:n-word-bits))
   (let* ((state (%make-gmp-rstate))
@@ -642,7 +643,7 @@ be (1+ COUNT)."
 
 (defun random-int (state boundary)
   "Return a random integer in the range 0..(boundary - 1)."
-  (declare (optimize (speed 3) (space 3) (safety 0)))
+  (declare (optimize (speed 3) (space 3)))
   (check-type state gmp-rstate)
   (let ((b (bassert boundary))
         (ref (gmp-rstate-ref state)))
