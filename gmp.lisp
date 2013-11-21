@@ -26,6 +26,7 @@
    #:mpz-mfac
    #:mpz-primorial
    ;; number theoretic functions
+   #:mpz-remove
    #:mpz-bin
    #:mpz-fib2
    ;; random number generation
@@ -247,6 +248,7 @@ be (1+ COUNT)."
                  __gmpz_2fac_ui
                  __gmpz_mfac_uiui
                  __gmpz_primorial_ui
+                 __gmpz_remove
                  __gmpz_bin_ui
                  __gmpz_fib2_ui))
 
@@ -275,6 +277,11 @@ be (1+ COUNT)."
 (define-alien-routine __gmpz_primorial_ui void
   (r (* (struct gmpint)))
   (n unsigned-long))
+
+(define-alien-routine __gmpz_remove int
+  (r (* (struct gmpint)))
+  (x (* (struct gmpint)))
+  (f (* (struct gmpint))))
 
 (define-alien-routine __gmpz_bin_ui void
   (r (* (struct gmpint)))
@@ -526,6 +533,14 @@ be (1+ COUNT)."
     (stubify mpz-2fac %mpz-2fac n)
     (stubify mpz-mfac %mpz-mfac n m)
     (stubify mpz-primorial %mpz-primorial n)))
+
+(defgmpfun mpz-remove (n f)
+  (with-mpz-results ((r (1+ (blength n)))
+                     (cnt 1))
+    (with-mpz-vars ((n gn)
+                    (f gf))
+      (let ((c (__gmpz_remove (addr r) (addr gn) (addr gf))))
+        (setf (deref (slot cnt 'mp_d)) c)))))
 
 (defgmpfun mpz-bin (n k)
   (check-type k (unsigned-byte #.sb-vm:n-word-bits))
