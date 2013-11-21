@@ -278,7 +278,7 @@ be (1+ COUNT)."
   (r (* (struct gmpint)))
   (n unsigned-long))
 
-(define-alien-routine __gmpz_remove int
+(define-alien-routine __gmpz_remove unsigned-long
   (r (* (struct gmpint)))
   (x (* (struct gmpint)))
   (f (* (struct gmpint))))
