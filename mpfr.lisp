@@ -127,7 +127,6 @@
    ;; random number generation
    #:urandomb
    #:urandom
-   #:grandom
    ;; rounding
    #:rounded-int
    #:rounded-int-ceiling
@@ -976,8 +975,7 @@
 
 
 (declaim (inline mpfr_urandomb
-                 mpfr_urandom
-                 mpfr_grandom))
+                 mpfr_urandom))
 
 (define-alien-routine mpfr_urandomb int
   (op (* (struct mpfrfloat)))
@@ -985,12 +983,6 @@
 
 (define-alien-routine mpfr_urandom int
   (op (* (struct mpfrfloat)))
-  (s (* (struct sb-gmp::gmprandstate)))
-  (rnd mpfr_rnd_enum))
-
-(define-alien-routine mpfr_grandom int
-  (op1 (* (struct mpfrfloat)))
-  (op2 (* (struct mpfrfloat)))
   (s (* (struct sb-gmp::gmprandstate)))
   (rnd mpfr_rnd_enum))
 
@@ -1697,17 +1689,6 @@
                           ref
                           round)))
     (values result i)))
-
-(defun grandom (state &optional (round *mpfr-rnd*))
-  (check-type state sb-gmp::gmp-rstate)
-  (let* ((ref (sb-gmp::gmp-rstate-ref state))
-         (result1 (make-mpfr-float))
-         (result2 (make-mpfr-float))
-         (i (mpfr_grandom (mpfr-float-ref result1)
-                          (mpfr-float-ref result2)
-                          ref
-                          round)))
-    (values result1 result2 i)))
 
 
 ;;; integer and remainder related functions / rounding
