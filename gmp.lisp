@@ -458,7 +458,7 @@ be (1+ COUNT)."
 
 (defgmpfun mpz-pow (base exp)
   (check-type exp (unsigned-byte #.sb-vm:n-word-bits))
-  (with-gmp-mpz-results (rop)
+  (with-mpz-results ((rop (1+ (* (blength base) exp))))
     (with-mpz-vars ((base gbase))
       (__gmpz_pow_ui (addr rop) (addr gbase) exp))))
 
@@ -781,7 +781,8 @@ be (1+ COUNT)."
   (def orig-two-arg-+ sb-kernel:two-arg-+)
   (def orig-two-arg-- sb-kernel:two-arg--)
   (def orig-two-arg-* sb-kernel:two-arg-*)
-  (def orig-two-arg-/ sb-kernel:two-arg-/))
+  (def orig-two-arg-/ sb-kernel:two-arg-/)
+  (def orig-intexp sb-kernel::intexp))
 
 ;;; integers
 (defun gmp-mul (a b)
@@ -869,6 +870,33 @@ be (1+ COUNT)."
       (mpq-div x y)
       (orig-two-arg-/ x y)))
 
+(defun gmp-intexp (base power)
+  (cond
+    ((and (integerp base)
+          (< (abs power) 1000)
+          (< (blength base) 4))
+     (orig-intexp base power))
+    (t
+     (when (and sb-kernel::*intexp-maximum-exponent*
+                (> (abs power) sb-kernel::*intexp-maximum-exponent*))
+       (error "The absolute value of ~S exceeds ~S."
+              power 'sb-kernel::*intexp-maximum-exponent*))
+     ;; calculate upper bound of required bignum limbs for result
+     ;; and raise error if too big  
+     (when (and (integerp base)
+                (> (1+ (* (blength base) power))
+                   sb-bignum::maximum-bignum-length))
+       (error "can't represent result of expt"))
+     (cond ((minusp power)
+            (/ (gmp-intexp base (- power))))
+           ((eql base 2)
+            (ash 1 power))
+           ((typep base 'ratio)
+            (sb-kernel::%make-ratio (gmp-intexp (numerator base) power)
+                                    (gmp-intexp (denominator base) power)))
+           (t
+            (mpz-pow base power))))))
+
 ;;; installation
 (defmacro with-package-locks-ignored (&body body)
   `(handler-bind ((sb-ext:package-lock-violation
@@ -890,7 +918,8 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-- gmp-two-arg--)
         (def sb-kernel:two-arg-* gmp-two-arg-*)
         (def sb-kernel:two-arg-/ gmp-two-arg-/)
-        (def isqrt gmp-isqrt)))
+        (def isqrt gmp-isqrt)
+        (def sb-kernel::intexp gmp-intexp)))
   (values))
 
 (defun uninstall-gmp-funs ()
@@ -906,7 +935,8 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-- orig-two-arg--)
         (def sb-kernel:two-arg-* orig-two-arg-*)
         (def sb-kernel:two-arg-/ orig-two-arg-/)
-        (def isqrt orig-isqrt)))
+        (def isqrt orig-isqrt)
+        (def sb-kernel::intexp orig-intexp)))
   (values))
 
 (defun load-gmp (&key (persistently t))
