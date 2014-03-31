@@ -13,6 +13,7 @@ Some functions can be transparently replaced within SBCL, namely:
  - sb-bignum:bignum-gcd
  - sb-kernel::two-arg-lcm
  - cl:isqrt
+ - sb-kernel::intexp
 
 and for making use of the GMP rational arithmetic:
 
