@@ -242,7 +242,9 @@ be (1+ COUNT)."
                           __gmpz_tdiv_qr
                           __gmpz_powm))
 
-(declaim (inline __gmpz_pow_ui
+(declaim (inline __gmpz_mul_2exp
+                 __gmpz_fdiv_q_2exp
+                 __gmpz_pow_ui
                  __gmpz_probab_prime_p
                  __gmpz_fac_ui
                  __gmpz_2fac_ui
@@ -251,6 +253,17 @@ be (1+ COUNT)."
                  __gmpz_remove
                  __gmpz_bin_ui
                  __gmpz_fib2_ui))
+
+(define-alien-routine __gmpz_mul_2exp void
+  (r (* (struct gmpint)))
+  (b (* (struct gmpint)))
+  (e unsigned-long))
+
+(define-alien-routine __gmpz_fdiv_q_2exp void
+  (r (* (struct gmpint)))
+  (b (* (struct gmpint)))
+  (e unsigned-long))
+
 
 (define-alien-routine __gmpz_pow_ui void
   (r (* (struct gmpint)))
