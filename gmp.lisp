@@ -10,8 +10,10 @@
    #:mpz-sub
    #:mpz-mul
    #:mpz-mod
+   #:mpz-mul-2exp
    #:mpz-cdiv
    #:mpz-fdiv
+   #:mpz-fdiv-2exp
    #:mpz-tdiv
    #:mpz-powm
    #:mpz-pow
