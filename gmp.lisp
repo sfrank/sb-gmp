@@ -264,7 +264,6 @@ be (1+ COUNT)."
   (b (* (struct gmpint)))
   (e unsigned-long))
 
-
 (define-alien-routine __gmpz_pow_ui void
   (r (* (struct gmpint)))
   (b (* (struct gmpint)))
@@ -436,6 +435,13 @@ be (1+ COUNT)."
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_mul (addr result) (addr ga) (addr gb)))))
 
+(defgmpfun mpz-mul-2exp (a b)
+  (check-type b (unsigned-byte #.sb-vm:n-word-bits))
+  (with-mpz-results ((result (+ (1+ (blength a))
+                                (floor b sb-vm:n-word-bits))))
+    (with-mpz-vars ((a ga))
+      (__gmpz_mul_2exp (addr result) (addr ga) b))))
+
 (defgmpfun mpz-mod (a b)
   (with-mpz-results ((result (1+ (max (blength a)
                                       (blength b)))))
@@ -460,6 +466,13 @@ be (1+ COUNT)."
                        (rem size))
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_fdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
+
+(defgmpfun mpz-fdiv-2exp (a b)
+  (check-type b (unsigned-byte #.sb-vm:n-word-bits))
+  (with-mpz-results ((result (1+ (- (blength a)
+                                    (floor b sb-vm:n-word-bits)))))
+    (with-mpz-vars ((a ga))
+      (__gmpz_fdiv_q_2exp (addr result) (addr ga) b))))
 
 (defgmpfun mpz-tdiv (n d)
   (let ((size (max (blength n)
