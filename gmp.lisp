@@ -842,6 +842,8 @@ be (1+ COUNT)."
   (def orig-two-arg-- sb-kernel:two-arg--)
   (def orig-two-arg-* sb-kernel:two-arg-*)
   (def orig-two-arg-/ sb-kernel:two-arg-/)
+  (def orig-bignum-ashift-left sb-bignum:bignum-ashift-left)
+  (def orig-bignum-ashift-right sb-bignum:bignum-ashift-right)
   (def orig-intexp sb-kernel::intexp))
 
 ;;; integers
@@ -953,6 +955,21 @@ be (1+ COUNT)."
            (t
             (mpz-pow base power))))))
 
+(defun gmp-bignum-ashift-left (bignum count &optional bignum-len)
+  (declare (type bignum-type bignum)
+           (type unsigned-byte count)
+           (ignore bignum-len))
+  (if (< (blength bignum) 4)
+      (orig-bignum-ashift-left)
+      (mpz-mul-2exp bignum count)))
+
+(defun gmp-bignum-ashift-right (bignum count)
+  (declare (type bignum-type bignum)
+           (type unsigned-byte count))
+  (if (< (blength bignum) 4)
+      (orig-bignum-ashift-right)
+      (mpz-fdiv-2exp bignum count)))
+
 ;;; installation
 (defmacro with-package-locks-ignored (&body body)
   `(handler-bind ((sb-ext:package-lock-violation
@@ -966,15 +983,17 @@ be (1+ COUNT)."
       (macrolet ((def (destination source)
                    `(setf (fdefinition ',destination)
                           (fdefinition ',source))))
-        (def multiply-bignums gmp-mul)
-        (def bignum-truncate gmp-truncate)
-        (def bignum-gcd mpz-gcd)
+        (def sb-bignum:multiply-bignums gmp-mul)
+        (def sb-bignum:bignum-truncate gmp-truncate)
+        (def sb-bignum:bignum-gcd mpz-gcd)
         (def sb-kernel:two-arg-lcm gmp-lcm)
         (def sb-kernel:two-arg-+ gmp-two-arg-+)
         (def sb-kernel:two-arg-- gmp-two-arg--)
         (def sb-kernel:two-arg-* gmp-two-arg-*)
         (def sb-kernel:two-arg-/ gmp-two-arg-/)
         (def isqrt gmp-isqrt)
+        (def sb-bignum:bignum-ashift-left gmp-bignum-ashift-left)
+        (def sb-bignum:bignum-ashift-right gmp-bignum-ashift-right)
         (def sb-kernel::intexp gmp-intexp)))
   (values))
 
@@ -992,6 +1011,8 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-* orig-two-arg-*)
         (def sb-kernel:two-arg-/ orig-two-arg-/)
         (def isqrt orig-isqrt)
+        (def sb-bignum:bignum-ashift-left orig-bignum-ashift-left)
+        (def sb-bignum:bignum-ashift-right orig-bignum-ashift-right)
         (def sb-kernel::intexp orig-intexp)))
   (values))
 
