@@ -518,7 +518,7 @@ be (1+ COUNT)."
 
 (defgmpfun mpz-pow (base exp)
   (check-type exp (integer 0 #.most-positive-fixnum))
-  (with-mpz-results ((rop (1+ (* (blength base) exp))))
+  (with-gmp-mpz-results (rop)
     (with-mpz-vars ((base gbase))
       (__gmpz_pow_ui (addr rop) (addr gbase) exp))))
 
