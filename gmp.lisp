@@ -10,10 +10,10 @@
    #:mpz-sub
    #:mpz-mul
    #:mpz-mod
-   #:mpz-mul-2exp
+   #:mpz-mul-2exp  ; shift left
    #:mpz-cdiv
    #:mpz-fdiv
-   #:mpz-fdiv-2exp
+   #:mpz-fdiv-2exp ; shift right
    #:mpz-tdiv
    #:mpz-powm
    #:mpz-pow
@@ -329,6 +329,7 @@ be (1+ COUNT)."
 
 ;;; utility macros for GMP mpz variable and result declaration and
 ;;; incarnation of associated SBCL bignums
+#+(or)
 (defmacro with-mpz-results (pairs &body body)
   (loop for (gres size) in pairs
         for res = (gensym "RESULT")
@@ -351,6 +352,33 @@ be (1+ COUNT)."
                          ,@inits
                          ,@body
                          (values ,@normlimbs)))))))
+
+(defmacro with-mpz-results (pairs &body body)
+  (loop for (gres size) in pairs
+        for res = (gensym "RESULT")
+        collect `(when (> ,size sb-bignum::maximum-bignum-length)
+                   (error "Size of result exceeds maxim bignum length")) into checks
+        collect `(,gres (struct gmpint)) into declares
+        collect `(,res (%allocate-bignum ,size))
+          into resinits
+        collect `(setf (slot ,gres 'mp_alloc) (%bignum-length ,res)
+                       (slot ,gres 'mp_size) 0
+                       (slot ,gres 'mp_d) (bignum-data-sap ,res))
+          into inits
+        collect `(if (minusp (slot ,gres 'mp_size)) ; check for negative result
+                     (z-to-bignum-neg ,res ,size)
+                     (z-to-bignum ,res ,size))
+          into normlimbs
+        collect res into results
+        finally (return
+                  `(progn
+                     ,@checks
+                     (let ,resinits
+                       (sb-sys:with-pinned-objects ,results
+                         (with-alien ,declares
+                           ,@inits
+                           ,@body
+                           (values ,@normlimbs))))))))
 
 (defmacro with-mpz-vars (pairs &body body)
   (loop for (a ga) in pairs
@@ -388,8 +416,10 @@ be (1+ COUNT)."
         collect `(__gmpz_init (addr ,gres)) into inits
         collect `(,size (abs (slot ,gres 'mp_size)))
           into resinits
-        collect `(,res (%allocate-bignum (1+,size)))
-          into resinits
+        collect `(when (> ,size (1- sb-bignum::maximum-bignum-length))
+                   (error "Size of result exceeds maxim bignum length")) into checks
+        collect `(,res (%allocate-bignum (1+ ,size)))
+          into resallocs
         collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
                                 (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res ,size)
                                 (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size)))
@@ -400,13 +430,15 @@ be (1+ COUNT)."
                   `(with-alien ,declares
                      ,@inits
                      ,@body
-                     (let* ,resinits
+                     (let ,resinits
                        (declare (type bignum-index ,@sizes))
+                       ,@checks
+                       (let ,resallocs
                        ;; copy GMP limbs into result bignum
-                       (sb-sys:with-pinned-objects ,results
-                         ,@copylimbs)
-                       ,@clears
-                       (values ,@results))))))
+                         (sb-sys:with-pinned-objects ,results
+                           ,@copylimbs)
+                         ,@clears
+                         (values ,@results)))))))
 
 ;;; function definition and foreign function relationships
 (defmacro defgmpfun (name args &body body)
@@ -485,7 +517,7 @@ be (1+ COUNT)."
         (__gmpz_tdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defgmpfun mpz-pow (base exp)
-  (check-type exp (unsigned-byte #.sb-vm:n-word-bits))
+  (check-type exp (integer 0 #.most-positive-fixnum))
   (with-mpz-results ((rop (1+ (* (blength base) exp))))
     (with-mpz-vars ((base gbase))
       (__gmpz_pow_ui (addr rop) (addr gbase) exp))))
@@ -899,6 +931,8 @@ be (1+ COUNT)."
       (orig-two-arg-/ x y)))
 
 (defun gmp-intexp (base power)
+  (declare (inline mpz-mul-2exp mpz-pow))
+  (check-type power (integer #.(1+ most-negative-fixnum) #.most-positive-fixnum))
   (cond
     ((and (integerp base)
           (< (abs power) 1000)
@@ -909,16 +943,10 @@ be (1+ COUNT)."
                 (> (abs power) sb-kernel::*intexp-maximum-exponent*))
        (error "The absolute value of ~S exceeds ~S."
               power 'sb-kernel::*intexp-maximum-exponent*))
-     ;; calculate upper bound of required bignum limbs for result
-     ;; and raise error if too big  
-     (when (and (integerp base)
-                (> (1+ (* (blength base) power))
-                   sb-bignum::maximum-bignum-length))
-       (error "can't represent result of expt"))
      (cond ((minusp power)
-            (/ (gmp-intexp base (- power))))
+            (/ (the integer (gmp-intexp base (- power)))))
            ((eql base 2)
-            (ash 1 power))
+            (mpz-mul-2exp 1 power))
            ((typep base 'ratio)
             (sb-kernel::%make-ratio (gmp-intexp (numerator base) power)
                                     (gmp-intexp (denominator base) power)))
