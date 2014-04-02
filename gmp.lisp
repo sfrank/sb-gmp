@@ -842,8 +842,6 @@ be (1+ COUNT)."
   (def orig-two-arg-- sb-kernel:two-arg--)
   (def orig-two-arg-* sb-kernel:two-arg-*)
   (def orig-two-arg-/ sb-kernel:two-arg-/)
-  (def orig-bignum-ashift-left sb-bignum:bignum-ashift-left)
-  (def orig-bignum-ashift-right sb-bignum:bignum-ashift-right)
   (def orig-intexp sb-kernel::intexp))
 
 ;;; integers
@@ -992,8 +990,6 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-* gmp-two-arg-*)
         (def sb-kernel:two-arg-/ gmp-two-arg-/)
         (def isqrt gmp-isqrt)
-        (def sb-bignum:bignum-ashift-left gmp-bignum-ashift-left)
-        (def sb-bignum:bignum-ashift-right gmp-bignum-ashift-right)
         (def sb-kernel::intexp gmp-intexp)))
   (values))
 
@@ -1011,8 +1007,6 @@ be (1+ COUNT)."
         (def sb-kernel:two-arg-* orig-two-arg-*)
         (def sb-kernel:two-arg-/ orig-two-arg-/)
         (def isqrt orig-isqrt)
-        (def sb-bignum:bignum-ashift-left orig-bignum-ashift-left)
-        (def sb-bignum:bignum-ashift-right orig-bignum-ashift-right)
         (def sb-kernel::intexp orig-intexp)))
   (values))
 
