@@ -28,7 +28,9 @@ heavy computational lifting.
 However, SB-GMP also provides easy and transparent access to several
 other functions of the GMP library and may be able to replace other
 parts of the SBCL bignum machinery in the future. Refer to the GMP
-documentation for the respective function specification.
+documentation for the respective function specification [1]. The
+higher-level Lisp interface are the ones exported from the package
+SB-GMP.
 
 The transparent SBCL integration is activated by calling
 
@@ -37,3 +39,10 @@ The transparent SBCL integration is activated by calling
 in a similar way it can be deactivated via
 
     (SB-GMP:UNINSTALL-GMP-FUNS)
+
+An additionan contrib using SB-GMP is the SB-MPFR library which
+provides support for arbitrary precision floating-point numbers. Refer
+to the file README-mpfr.md for details.
+
+
+[1] http://gmplib.org/manual/
