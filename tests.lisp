@@ -138,6 +138,15 @@
                 (gen-mpz :limbs limbs :sign t)
                 (gen-mpz :limbs limbs :sign t :nonzero t)))
 
+(define-gmp-test (mpz-pow :repeat 7 :limbs (1+ (random #x253F)))
+  (test-n-cases (lambda (base exponent)
+                  (let ((*gmp-disabled* nil)) ; atrociously slow otherwise
+                    (expt base exponent)))
+                'mpz-pow
+                (gen-mpz :limbs limbs :sign t)
+                (lambda ()
+                  (1+ (random 40)))))
+
 (define-gmp-test (mpz-powm :repeat 7 :limbs (1+ (random #x253F)))
   (test-n-cases (lambda (base exponent mod)
                   (let ((*gmp-disabled* nil)) ; atrociously slow otherwise
@@ -173,9 +182,19 @@
   (test-one-case 'fac 'mpz-fac
                  63))
 
-(define-gmp-test (pow)
-  (test-one-case 'expt 'mpz-pow
+(define-gmp-test (pow1)
+  (test-one-case (lambda (base exponent)
+                   (let ((*gmp-disabled* t))
+                     (expt base exponent)))
+                 'mpz-pow
                  16 3))
+
+(define-gmp-test (pow2)
+  (test-one-case (lambda (base exponent)
+                   (let ((*gmp-disabled* t))
+                     (expt base exponent)))
+                 'mpz-pow
+                 -15546163094340153687 11))
 
 (deftest remove-1
     (multiple-value-list (mpz-remove 28 2))

@@ -126,7 +126,7 @@ bignum."
   (the (integer * 0) (%normalize-bignum b count)))
 
 ;;; conversion functions that also copy from GMP to SBCL bignum space
-(declaim (inline gmp-z-to-bignum gmp-z-to-bignum-neg))
+(declaim (inline gmp-z-to-bignum))
 
 (defun gmp-z-to-bignum (z b count)
   "Convert and copy a positive GMP integer into the buffer of a
@@ -137,25 +137,6 @@ pre-allocated bignum. The allocated bignum-length must be (1+ COUNT)."
            (type bignum-index count))
   (dotimes (i count (%normalize-bignum b (1+ count)))
     (%bignum-set b i (deref z i))))
-
-(defun gmp-z-to-bignum-neg (z b count)
-  "Convert to twos complement and copy a negative GMP integer into the
-buffer of a pre-allocated bignum. The allocated bignum-length must
-be (1+ COUNT)."
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (type (alien (* unsigned-long)) z)
-           (type bignum-type b)
-           (type bignum-index count))
-  (let ((carry 0)
-        (add 1))
-    (declare (type (mod 2) carry add))
-    (dotimes (i count (%normalize-bignum b (1+ count)))
-      (multiple-value-bind (value carry-tmp)
-          (%add-with-carry
-           (%lognot (deref z i)) add carry)
-        (%bignum-set b i value)
-        (setf carry carry-tmp
-              add 0)))))
 
 (declaim (inline blength bassert)
          (ftype (function (integer) (values bignum-index &optional)) blength)
@@ -421,7 +402,9 @@ be (1+ COUNT)."
         collect `(,res (%allocate-bignum (1+ ,size)))
           into resallocs
         collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
-                                (gmp-z-to-bignum-neg (slot ,gres 'mp_d) ,res ,size)
+                                (negate-bignum
+                                 (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size)
+                                 nil)
                                 (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size)))
           into copylimbs
         collect `(__gmpz_clear (addr ,gres)) into clears
@@ -934,9 +917,10 @@ be (1+ COUNT)."
   (declare (inline mpz-mul-2exp mpz-pow))
   (check-type power (integer #.(1+ most-negative-fixnum) #.most-positive-fixnum))
   (cond
-    ((and (integerp base)
-          (< (abs power) 1000)
-          (< (blength base) 4))
+    ((or (and (integerp base)
+              (< (abs power) 1000)
+              (< (blength base) 4))
+         *gmp-disabled*)
      (orig-intexp base power))
     (t
      (when (and sb-kernel::*intexp-maximum-exponent*
@@ -952,21 +936,6 @@ be (1+ COUNT)."
                                     (gmp-intexp (denominator base) power)))
            (t
             (mpz-pow base power))))))
-
-(defun gmp-bignum-ashift-left (bignum count &optional bignum-len)
-  (declare (type bignum-type bignum)
-           (type unsigned-byte count)
-           (ignore bignum-len))
-  (if (< (blength bignum) 4)
-      (orig-bignum-ashift-left)
-      (mpz-mul-2exp bignum count)))
-
-(defun gmp-bignum-ashift-right (bignum count)
-  (declare (type bignum-type bignum)
-           (type unsigned-byte count))
-  (if (< (blength bignum) 4)
-      (orig-bignum-ashift-right)
-      (mpz-fdiv-2exp bignum count)))
 
 ;;; installation
 (defmacro with-package-locks-ignored (&body body)
