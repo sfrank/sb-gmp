@@ -42,7 +42,7 @@ in a similar way it can be deactivated via
 
 An additionan contrib using SB-GMP is the SB-MPFR library which
 provides support for arbitrary precision floating-point numbers. Refer
-to the file README-mpfr.md for details.
+to the file README.md of SB-MPFR for details.
 
 
 [1] http://gmplib.org/manual/
