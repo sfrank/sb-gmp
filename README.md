@@ -40,9 +40,10 @@ in a similar way it can be deactivated via
 
     (SB-GMP:UNINSTALL-GMP-FUNS)
 
-An additionan contrib using SB-GMP is the SB-MPFR library which
-provides support for arbitrary precision floating-point numbers. Refer
-to the file README.md of SB-MPFR for details.
+An additional contrib using SB-GMP is SB-MPFR [2] which provides
+support for arbitrary precision floating-point numbers. Refer to the
+file README.md of SB-MPFR for details.
 
 
 [1] http://gmplib.org/manual/
+[2] https://github.com/sfrank/sb-mpfr
