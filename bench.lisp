@@ -17,7 +17,7 @@
           until (or (= gmp-win 5)
                     (= limbs 78)) ; > 78 exhausts default heap size
           do
-             (loop 
+             (loop
                for i below 100000
                collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
@@ -26,13 +26,13 @@
                finally
                   (let (time1 time2)
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun + list-a list-b))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpz-add list-a list-b)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
@@ -56,7 +56,7 @@
           until (or (= gmp-win 3)
                     (= limbs 100))
           do
-             (loop 
+             (loop
                for i below 10000
                collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
@@ -65,13 +65,13 @@
                finally
                   (let (time1 time2)
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun * list-a list-b))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpz-mul list-a list-b)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
@@ -95,7 +95,7 @@
           until (or (= gmp-win 3)
                     (= limbs 100))
           do
-             (loop 
+             (loop
                for i below 100
                collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
@@ -105,13 +105,13 @@
                   (let (time1 time2)
                     (format t "bench it~%")
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun truncate list-a list-b))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpz-tdiv list-a list-b)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
@@ -135,7 +135,7 @@
           until (or (= gmp-win 3)
                     (= limbs 100))
           do
-             (loop 
+             (loop
                for i below 100
                collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
@@ -145,13 +145,13 @@
                   (let (time1 time2)
                     (format t "bench it~%")
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun gcd list-a list-b))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpz-gcd list-a list-b)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
@@ -173,7 +173,7 @@
           until (or (= gmp-win 3)
                     (= limbs 100))
           do
-             (loop 
+             (loop
                for i below 100
                collect (sb-gmp::bassert (sb-gmp:random-bitcount *state* (* limbs sb-vm:n-word-bits)))
                  into list-a
@@ -181,13 +181,13 @@
                   (let (time1 time2)
                     (format t "bench it~%")
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun isqrt list-a))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpz-sqrt list-a)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
@@ -211,7 +211,7 @@
           until (or (= gmp-win 5)
                     (= limbsa 50))
           do
-             (loop 
+             (loop
                for i below 10000
                collect (/ (sb-gmp:random-bitcount *state* (* limbsa sb-vm:n-word-bits))
                           (sb-gmp:random-bitcount *state* (* limbsb sb-vm:n-word-bits)))
@@ -222,13 +222,13 @@
                finally
                   (let (time1 time2)
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun + list-a list-b))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpq-add list-a list-b)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"
@@ -252,7 +252,7 @@
           until (or (= gmp-win 5)
                     (= limbsa 50))
           do
-             (loop 
+             (loop
                for i below 10000
                collect (/ (sb-gmp:random-bitcount *state* (* limbsa sb-vm:n-word-bits))
                           (sb-gmp:random-bitcount *state* (* limbsb sb-vm:n-word-bits)))
@@ -263,13 +263,13 @@
                finally
                   (let (time1 time2)
                     (let ((r-sbcl (progn (sb-ext:gc)
-                                         (sb-ext:call-with-timing 
-                                          (lambda (&rest plist) 
+                                         (sb-ext:call-with-timing
+                                          (lambda (&rest plist)
                                             (setf time1 plist))
                                           (tstfun * list-a list-b))))
                           (r-gmp (progn (sb-ext:gc)
-                                        (sb-ext:call-with-timing 
-                                         (lambda (&rest plist) 
+                                        (sb-ext:call-with-timing
+                                         (lambda (&rest plist)
                                            (setf time2 plist))
                                          (tstfun sb-gmp:mpq-mul list-a list-b)))))
                       (format *stream* "limbs: ~s~%Time SBCL: ~s~%Time GMP:  ~s~%"

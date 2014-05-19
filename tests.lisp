@@ -200,6 +200,7 @@
     (multiple-value-list (mpz-remove 28 2))
   (7 2))
 
+#+sb-gmp-5.1
 (deftest remove-2
     (multiple-value-list (mpz-remove 28 -7))
   (-4 1))
