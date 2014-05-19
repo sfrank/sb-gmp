@@ -151,7 +151,7 @@
   (test-n-cases (lambda (base exponent mod)
                   (let ((*gmp-disabled* nil)) ; atrociously slow otherwise
                     (mod (expt base exponent) mod)))
-                'mpz-powm 
+                'mpz-powm
                 (gen-mpz :limbs limbs :sign t)
                 (lambda ()
                   (1+ (random 40)))
