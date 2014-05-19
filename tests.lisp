@@ -151,7 +151,7 @@
   (test-n-cases (lambda (base exponent mod)
                   (let ((*gmp-disabled* nil)) ; atrociously slow otherwise
                     (mod (expt base exponent) mod)))
-                'mpz-powm 
+                'mpz-powm
                 (gen-mpz :limbs limbs :sign t)
                 (lambda ()
                   (1+ (random 40)))
@@ -200,6 +200,7 @@
     (multiple-value-list (mpz-remove 28 2))
   (7 2))
 
+#+sb-gmp-5.1
 (deftest remove-2
     (multiple-value-list (mpz-remove 28 -7))
   (-4 1))
