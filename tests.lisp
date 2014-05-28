@@ -3,7 +3,7 @@
 
 (in-package "SB-GMP-TESTS")
 
-(defparameter *state* (make-gmp-rstate))
+(defparameter *state* (make-gmp-rstate-mt))
 (rand-seed *state* 1234)
 
 (defmacro defgenerator (name arguments &body body)
@@ -200,7 +200,6 @@
     (multiple-value-list (mpz-remove 28 2))
   (7 2))
 
-#+sb-gmp-5.1
 (deftest remove-2
     (multiple-value-list (mpz-remove 28 -7))
   (-4 1))

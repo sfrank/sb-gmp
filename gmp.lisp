@@ -572,7 +572,7 @@
                   ;; to not confuse %normalize-bignum
                   (when (> (slot r 'mp_alloc) (abs (slot r 'mp_size)))
                     (%bignum-set (data-sap-bignum (alien-sap (slot r 'mp_d)))
-                                 (1- (slot r 'mp_alloc))
+                                 (slot r 'mp_size)
                                  0))))))
     (values res c)))
 
