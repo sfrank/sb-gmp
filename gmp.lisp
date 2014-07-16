@@ -112,16 +112,6 @@
 ;; context. They only become bound (or definite garbage) on return
 ;; from a GMP computation.
 
-(sb-alien::define-alien-routine alloc-gmp (* t)
-  (size size-t))
-(sb-alien::define-alien-routine realloc-gmp (* t)
-  (buffer (* t))
-  (old_size size-t)
-  (new_size size-t))
-(sb-alien::define-alien-routine free-gmp void
-  (buffer (* t))
-  (size size-t))
-
 (define-alien-routine __gmp_set_memory_functions void
   (alloc (function (* t) size-t))
   (realloc (function (* t) (* t) size-t size-t))
