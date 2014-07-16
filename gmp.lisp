@@ -112,38 +112,15 @@
 ;; context. They only become bound (or definite garbage) on return
 ;; from a GMP computation.
 
-(sb-alien::define-alien-callback allocate_gmp (* t) ((size size-t))
-  (declare (optimize (speed 3) (space 3))
-           (type (unsigned-byte #.sb-vm:n-word-bits) size))
-  ;;(format t "GMP allocate_function called; size ~S~%" size)
-  (bignum-data-sap
-   (%allocate-bignum
-    (ceiling size sb-vm:n-word-bytes))))
-
-(sb-alien::define-alien-callback reallocate_gmp (* t) ((buffer (* t))
-                                                       (old_size size-t)
-                                                       (new_size size-t))
-  (declare (optimize (speed 3) (space 3))
-           (type (unsigned-byte #.sb-vm:n-word-bits) old_size new_size))
-  ;;(format t "GMP reallocate_function called; old size ~S, new size ~S~%"
-  ;;        old_size new_size)
-  (if (<= new_size old_size)
-      buffer
-      (let ((new (bignum-data-sap
-                  (%allocate-bignum
-                   (ceiling new_size
-                            sb-vm:n-word-bytes)))))
-        (sb-kernel:system-area-ub8-copy (alien-sap buffer)
-                                        0 new 0 old_size)
-        new)))
-
-(sb-alien::define-alien-callback free_gmp void ((buffer (* t))
-                                                (size size-t))
-  (declare (optimize (speed 3) (space 3) (safety 0))
-           (dynamic-extent buffer size)
-           (ignore buffer size))
-  ;;(format t "GMP free_function called~%")
-  (values))
+(sb-alien::define-alien-routine alloc-gmp (* t)
+  (size size-t))
+(sb-alien::define-alien-routine realloc-gmp (* t)
+  (buffer (* t))
+  (old_size size-t)
+  (new_size size-t))
+(sb-alien::define-alien-routine free-gmp void
+  (buffer (* t))
+  (size size-t))
 
 (define-alien-routine __gmp_set_memory_functions void
   (alloc (function (* t) size-t))
@@ -151,9 +128,10 @@
   (free (function void (* t) size-t)))
 
 (defun init-allocation-functions ()
-  (__gmp_set_memory_functions allocate_gmp
-                              reallocate_gmp
-                              free_gmp))
+  (__gmp_set_memory_functions
+   (extern-alien "alloc_gmp" (function (* t)  size-t))
+   (extern-alien "realloc_gmp" (function (* t) (* t) size-t size-t))
+   (extern-alien "free_gmp" (function void  (* t) size-t))))
 
 ;;;; alien GMP types
 
