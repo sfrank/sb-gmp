@@ -108,7 +108,7 @@
 ;; since the bignums must not be moved. Furthermore, since we also
 ;; potentially allocate new bignums, a simple with-pinned-objects is
 ;; not sufficiant since the newly allocated bignum created when
-;; calling from C to Lisp are not yet known references in the program
+;; allocated by the C runtime are not yet known references in the program
 ;; context. They only become bound (or definite garbage) on return
 ;; from a GMP computation.
 
