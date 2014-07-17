@@ -225,6 +225,7 @@ alloc_code_object (unsigned boxed, unsigned unboxed) {
     return make_lispobj(code, OTHER_POINTER_LOWTAG);
 }
 
+/* allocating a new bignum for GMP */
 void *alloc_gmp(size_t n)
 {
   struct bignum *ptr;
@@ -234,6 +235,11 @@ void *alloc_gmp(size_t n)
   return (void *)(ptr->digits);
 }
 
+/* reallocating (either widening or narrowing) the limbs of a bignum.
+   Expanding the limb size is handled by allocating a bignum with more
+   limbs and copying the old limbs into it, narrowing is performed by
+   setting the superfluous limbs to zero, subsequent bignum normalization
+   will then free these limbs during the next GC cycle. */
 void *realloc_gmp(void *buf, size_t old_n, size_t new_n)
 {
   struct bignum *ptr;
@@ -250,7 +256,9 @@ void *realloc_gmp(void *buf, size_t old_n, size_t new_n)
   return buf;
 }
 
-
+/* This function is intentionally empty since freeing is automatically
+   handled by the garbage collector but the custom allocation interface
+   of GMP demands its existence. */
 void free_gmp(__attribute__((unused)) void *ptr,
               __attribute__((unused)) size_t n)
 {
