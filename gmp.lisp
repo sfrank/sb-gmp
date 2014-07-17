@@ -334,7 +334,7 @@
                                 (data-sap-bignum (alien-sap (slot ,gres 'mp_d)))
                                 (slot ,gres 'mp_alloc))))
                    (declare (sb-ext:muffle-conditions sb-ext:compiler-note)
-                            (type unsigned-byte bres))
+                            (type integer bres))
                    ;; check for negative result
                    (if (minusp (slot ,gres 'mp_size))
                        (- bres)
