@@ -27,6 +27,7 @@ extern lispobj alloc_sap(void *ptr);
 extern lispobj alloc_base_string(char *str);
 extern lispobj alloc_code_object(unsigned boxed, unsigned unboxed);
 
+/* Interface functions for GMP custom allocation used by SB-GMP */
 extern void *alloc_gmp(size_t n);
 extern void *realloc_gmp(void *buf, size_t old_n, size_t new_n);
 extern void free_gmp(void *ptr, size_t n);
