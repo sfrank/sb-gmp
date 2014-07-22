@@ -330,24 +330,24 @@
                        (slot ,gres 'mp_size) 0
                        (slot ,gres 'mp_d) (bignum-data-sap ,res))
           into inits
-        collect `(let ((bres (%normalize-bignum
-                                (data-sap-bignum (alien-sap (slot ,gres 'mp_d)))
-                                (slot ,gres 'mp_alloc))))
-                   (declare (sb-ext:muffle-conditions sb-ext:compiler-note)
-                            (type integer bres))
-                   ;; check for negative result
-                   (if (minusp (slot ,gres 'mp_size))
-                       (- bres)
-                       bres))
-          into normlimbs
+        collect `(setf ,res (if (minusp (slot ,gres 'mp_size))
+                                (- (%normalize-bignum
+                                    (data-sap-bignum (alien-sap (slot ,gres 'mp_d)))
+                                    (slot ,gres 'mp_alloc)))
+                                (%normalize-bignum
+                                 (data-sap-bignum (alien-sap (slot ,gres 'mp_d)))
+                                 (slot ,gres 'mp_alloc))))
+          into letnormlimbs
         collect res into results
         finally (return
                   `(let ,resinits
+                     (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
                      (sb-sys:without-gcing
                       (with-alien ,declares
                         ,@inits
                         ,@body
-                        (values ,@normlimbs)))))))
+                        ,@letnormlimbs))
+                     (values ,@results)))))
 
 ;; the default case is to initially allocate one limb for the result
 (defmacro with-results (resultvars &body body)
