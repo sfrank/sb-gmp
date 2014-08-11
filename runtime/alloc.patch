@@ -1,0 +1,67 @@
+diff -u /home/sfrank/prj/sbcl/src/runtime/alloc.c ./alloc.c
+--- /home/sfrank/prj/sbcl/src/runtime/alloc.c	2014-06-29 12:21:19.583549089 +0200
++++ ./alloc.c	2014-07-17 16:21:39.382777462 +0200
+@@ -16,6 +16,7 @@
+ 
+ #include <stdio.h>
+ #include <string.h>
++#include <sys/param.h>
+ 
+ #include "sbcl.h"
+ #include "runtime.h"
+@@ -223,3 +224,42 @@
+     code->debug_info = NIL;
+     return make_lispobj(code, OTHER_POINTER_LOWTAG);
+ }
++
++/* allocating a new bignum for GMP */
++void *alloc_gmp(size_t n)
++{
++  struct bignum *ptr;
++
++  ptr = (struct bignum *)alloc_unboxed(BIGNUM_WIDETAG,
++                                       (n / N_WORD_BYTES));
++  return (void *)(ptr->digits);
++}
++
++/* reallocating (either widening or narrowing) the limbs of a bignum.
++   Expanding the limb size is handled by allocating a bignum with more
++   limbs and copying the old limbs into it, narrowing is performed by
++   setting the superfluous limbs to zero, subsequent bignum normalization
++   will then free these limbs during the next GC cycle. */
++void *realloc_gmp(void *buf, size_t old_n, size_t new_n)
++{
++  struct bignum *ptr;
++
++  if(old_n < new_n) {
++    ptr = (struct bignum *)alloc_unboxed(BIGNUM_WIDETAG,
++                                         (new_n / N_WORD_BYTES));
++    memcpy((void *)(ptr->digits), buf, MIN(old_n,new_n));
++    return (void *)(ptr->digits);
++  }
++  else if(old_n > new_n) {
++    memset(buf + new_n, 0, old_n - new_n);
++  }
++  return buf;
++}
++
++/* This function is intentionally empty since freeing is automatically
++   handled by the garbage collector but the custom allocation interface
++   of GMP demands its existence. */
++void free_gmp(__attribute__((unused)) void *ptr,
++              __attribute__((unused)) size_t n)
++{
++}
+diff -u /home/sfrank/prj/sbcl/src/runtime/alloc.h ./alloc.h
+--- /home/sfrank/prj/sbcl/src/runtime/alloc.h	2013-06-08 14:57:36.000000000 +0200
++++ ./alloc.h	2014-07-17 16:21:39.382777462 +0200
+@@ -27,4 +27,9 @@
+ extern lispobj alloc_base_string(char *str);
+ extern lispobj alloc_code_object(unsigned boxed, unsigned unboxed);
+ 
++/* Interface functions for GMP custom allocation used by SB-GMP */
++extern void *alloc_gmp(size_t n);
++extern void *realloc_gmp(void *buf, size_t old_n, size_t new_n);
++extern void free_gmp(void *ptr, size_t n);
++
+ #endif /* _ALLOC_H_ */
