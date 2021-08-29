@@ -1,6 +1,11 @@
 SB-GMP
 ======
 
+NOTE: SB-GMP is now part of the contribs of SBCL, so you the version
+that comes bundled with SBCL as it contains all the newst fixes that
+may not be contained here!
+
+
 GMP integration for SBCL
 
 This contrib enables the use of bignum computation routines from the
