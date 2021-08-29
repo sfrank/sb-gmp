@@ -1,9 +1,9 @@
 SB-GMP
 ======
 
-NOTE: SB-GMP is now part of the contribs of SBCL, so you the version
-that comes bundled with SBCL as it contains all the newst fixes that
-may not be contained here!
+NOTE: SB-GMP is now part of the contribs of SBCL, so you should use
+the version that comes bundled with SBCL as it contains all the
+newest fixes that may not yet be reflected here!
 
 
 GMP integration for SBCL
