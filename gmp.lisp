@@ -18,6 +18,7 @@
    #:mpz-powm
    #:mpz-pow
    #:mpz-gcd
+   #:mpz-divisible-p
    #:mpz-lcm
    #:mpz-sqrt
    #:mpz-probably-prime-p
@@ -32,9 +33,8 @@
    #:mpz-bin
    #:mpz-fib2
    ;; random number generation
-   #:make-gmp-rstate-mt
+   #:make-gmp-rstate
    #:make-gmp-rstate-lc
-   #:make-gmp-rstate-lc-size
    #:rand-seed
    #:random-bitcount
    #:random-int
@@ -57,6 +57,8 @@
    ))
 
 (in-package "SB-GMP")
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (setf (sb-int:system-package-p *package*) t))
 
 (defvar *gmp-disabled* nil)
 
@@ -64,29 +66,23 @@
   (- (* sb-vm:bignum-digits-offset sb-vm:n-word-bytes)
      sb-vm:other-pointer-lowtag))
 
-(declaim (inline bignum-data-sap data-sap-bignum))
+(declaim (inline bignum-data-sap))
 (defun bignum-data-sap (x)
   (declare (type bignum x))
   (sb-sys:sap+ (sb-sys:int-sap (sb-kernel:get-lisp-obj-address x))
                +bignum-raw-area-offset+))
 
-(defun data-sap-bignum (x)
-  (declare (type system-area-pointer x))
-  (sb-kernel:%make-lisp-obj
-   (sb-sys:sap-int
-    (sb-sys:sap+ x (- +bignum-raw-area-offset+)))))
-
-;; library loading preparation
-
 (defun try-load-shared-object (pathname)
   (handler-case
       (load-shared-object pathname :dont-save t)
-    (error () nil)))
+    (error (e)
+      (declare (ignore e))
+      nil)))
 
 (defun %load-gmp ()
   (or (some #'try-load-shared-object
             #-(or win32 darwin) '("libgmp.so" "libgmp.so.10" "libgmp.so.3")
-            #+darwin '("libgmp.dylib" "libgmp.10.dylib" libgmp.3.dylib)
+            #+darwin '("libgmp.dylib" "libgmp.10.dylib" "libgmp.3.dylib")
             #+win32 '("libgmp.dll" "libgmp-10.dll" "libgmp-3.dll"))
       (warn "GMP not loaded.")))
 
@@ -98,51 +94,71 @@
 (%load-gmp)
 
 
+;;; types and initialization
 
-;;;; memory handling
+(define-alien-type gmp-limb
+  #-(and win32 x86-64) unsigned-long
+  #+(and win32 x86-64) unsigned-long-long)
 
-;; we use the client side allocation scheme of GMP. Upon
-;; (re)allocation we call back into SBCL and allocate an approriate
-;; bignum. The returned memory range is the raw bignum buffer without
-;; hader. It is therefore crucial to disable GC when calling into GMP
-;; since the bignums must not be moved. Furthermore, since we also
-;; potentially allocate new bignums, a simple with-pinned-objects is
-;; not sufficiant since the newly allocated bignum created when
-;; allocated by the C runtime are not yet known references in the program
-;; context. They only become bound (or definite garbage) on return
-;; from a GMP computation.
+(deftype ui ()
+  #-(and win32 x86-64) 'sb-vm:word
+  #+(and win32 x86-64) '(unsigned-byte 32))
 
-(define-alien-routine __gmp_set_memory_functions void
-  (alloc (function (* t) size-t))
-  (realloc (function (* t) (* t) size-t size-t))
-  (free (function void (* t) size-t)))
+(deftype si ()
+  #-(and win32 x86-64) 'sb-vm:signed-word
+  #+(and win32 x86-64) '(signed-byte 32))
 
-(defun init-allocation-functions ()
-  (__gmp_set_memory_functions
-   (extern-alien "alloc_gmp" (function (* t)  size-t))
-   (extern-alien "realloc_gmp" (function (* t) (* t) size-t size-t))
-   (extern-alien "free_gmp" (function void  (* t) size-t))))
-
-;;;; alien GMP types
-
-;; GMP bignum integers
 (define-alien-type nil
     (struct gmpint
             (mp_alloc int)
             (mp_size int)
-            (mp_d (* unsigned-long))))
+            (mp_d (* gmp-limb))))
 
-;;; GMP bignum rationals
-(define-alien-type nil
-    (struct gmprat
-            (mp_num (struct gmpint))
-            (mp_den (struct gmpint))))
+;; Section 3.6 "Memory Management" of the GMP manual states: "mpz_t
+;; and mpq_t variables never reduce their allocated space. Normally
+;; this is the best policy, since it avoids frequent
+;; reallocation. Applications that need to return memory to the heap
+;; at some particular point can use mpz_realloc2, or clear variables
+;; no longer needed."
+;;
+;; We can therefore allocate a bignum of sufficient size and use the
+;; space for GMP computations without the need for memory transfer
+;; from C to Lisp space.
+(declaim (inline z-to-bignum z-to-bignum-neg))
 
+(defun z-to-bignum (b count)
+  "Convert GMP integer in the buffer of a pre-allocated bignum."
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (type bignum b)
+           (type bignum-length count))
+  (if (zerop count)
+      0
+      (the unsigned-byte (%normalize-bignum b count))))
 
-;;; utility functions for SBCL bignums
+(defun z-to-bignum-neg (b count)
+  "Convert to twos complement int the buffer of a pre-allocated
+bignum."
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (type bignum b)
+           (type bignum-length count))
+  (negate-bignum-in-place b)
+  (the (integer * 0) (%normalize-bignum b count)))
+
+;;; conversion functions that also copy from GMP to SBCL bignum space
+(declaim (inline gmp-z-to-bignum))
+
+(defun gmp-z-to-bignum (z b count)
+  "Convert and copy a positive GMP integer into the buffer of a
+pre-allocated bignum. The allocated bignum-length must be (1+ COUNT)."
+  (declare (optimize (speed 3) (space 3) (safety 0))
+           (type (alien (* gmp-limb)) z)
+           (type bignum b)
+           (type bignum-length count))
+  (dotimes (i count (%normalize-bignum b (1+ count)))
+    (%bignum-set b i (deref z i))))
 
 (declaim (inline blength bassert)
-         (ftype (function (integer) (values bignum-index &optional)) blength)
+         (ftype (function (integer) (values bignum-length &optional)) blength)
          (ftype (function (integer) (values bignum &optional)) bassert))
 
 (defun blength (a)
@@ -156,6 +172,29 @@
   (etypecase a
     (fixnum (make-small-bignum a))
     (t a)))
+
+;;;; rationals
+(define-alien-type nil
+    (struct gmprat
+            (mp_num (struct gmpint))
+            (mp_den (struct gmpint))))
+
+;;; Memory initialization functions to support non-allocated results
+;;; since an upper bound cannot always correctly predetermined
+;;; (e.g. the memory required for the fib function exceed the number
+;;; of limbs that are be determined through the infamous Phi-relation
+;;; resulting in a memory access error.
+
+;; Use these for non-preallocated bignum values, but only when
+;; ultimately necessary since copying back into bignum space at the end
+;; of the operation is about three times slower than the shared buffer
+;; approach.
+(declaim (inline __gmpz_init __gmpz_clear))
+(define-alien-routine __gmpz_init void
+  (x (* (struct gmpint))))
+
+(define-alien-routine __gmpz_clear void
+  (x (* (struct gmpint))))
 
 
 ;;; integer interface functions
@@ -208,6 +247,7 @@
 (declaim (inline __gmpz_mul_2exp
                  __gmpz_fdiv_q_2exp
                  __gmpz_pow_ui
+                 __gmpz_divisible_p
                  __gmpz_probab_prime_p
                  __gmpz_fac_ui
                  __gmpz_2fac_ui
@@ -231,6 +271,10 @@
   (r (* (struct gmpint)))
   (b (* (struct gmpint)))
   (e unsigned-long))
+
+(define-alien-routine __gmpz_divisible_p int
+  (n (* (struct gmpint)))
+  (d (* (struct gmpint))))
 
 (define-alien-routine __gmpz_probab_prime_p int
   (n (* (struct gmpint)))
@@ -288,8 +332,41 @@
 
 ;;;; SBCL interface
 
-;;; utility macros for GMP mpz variable and result declaration and
+;;; Utility macros for GMP mpz variable and result declaration and
 ;;; incarnation of associated SBCL bignums
+
+(declaim (inline allocate-bignum))
+(defun allocate-bignum (size)
+  (let ((bignum (%allocate-bignum size)))
+    (dotimes (i size bignum)
+      (setf (%bignum-ref bignum i) 0))))
+
+(defmacro with-mpz-results (pairs &body body)
+  (loop for (gres size) in pairs
+        for res = (gensym "RESULT")
+        collect `(when (> ,size sb-kernel:maximum-bignum-length)
+                   (error "Size of result exceeds maxim bignum length")) into checks
+        collect `(,gres (struct gmpint)) into declares
+        collect `(,res (allocate-bignum ,size))
+          into resinits
+        collect `(setf (slot ,gres 'mp_alloc) (%bignum-length ,res)
+                       (slot ,gres 'mp_size) 0
+                       (slot ,gres 'mp_d) (bignum-data-sap ,res))
+          into inits
+        collect `(if (minusp (slot ,gres 'mp_size)) ; check for negative result
+                     (z-to-bignum-neg ,res ,size)
+                     (z-to-bignum ,res ,size))
+          into normlimbs
+        collect res into results
+        finally (return
+                  `(progn
+                     ,@checks
+                     (let ,resinits
+                       (sb-sys:with-pinned-objects ,results
+                         (with-alien ,declares
+                           ,@inits
+                           ,@body
+                           (values ,@normlimbs))))))))
 
 (defmacro with-mpz-vars (pairs &body body)
   (loop for (a ga) in pairs
@@ -318,146 +395,148 @@
                          ,@gmpvarssetup
                          ,@body))))))
 
-
-;; pre-allocate the result bignum with a certain limb size
-(defmacro with-allocated-results (pairs &body body)
-  (loop for (gres size) in pairs
+(defmacro with-gmp-mpz-results (resultvars &body body)
+  (loop for gres in resultvars
         for res = (gensym "RESULT")
+        for size = (gensym "SIZE")
+        collect size into sizes
         collect `(,gres (struct gmpint)) into declares
-        collect `(,res (%allocate-bignum ,size))
+        collect `(__gmpz_init (addr ,gres)) into inits
+        collect `(,size (abs (slot ,gres 'mp_size)))
           into resinits
-        collect `(setf (slot ,gres 'mp_alloc) ,size
-                       (slot ,gres 'mp_size) 0
-                       (slot ,gres 'mp_d) (bignum-data-sap ,res))
-          into inits
-        collect `(setf ,res (if (minusp (slot ,gres 'mp_size))
-                                (- (%normalize-bignum
-                                    (data-sap-bignum (alien-sap (slot ,gres 'mp_d)))
-                                    (slot ,gres 'mp_alloc)))
-                                (%normalize-bignum
-                                 (data-sap-bignum (alien-sap (slot ,gres 'mp_d)))
-                                 (slot ,gres 'mp_alloc))))
-          into letnormlimbs
+        collect `(when (> ,size (1- sb-kernel:maximum-bignum-length))
+                   (error "Size of result exceeds maxim bignum length")) into checks
+        collect `(,res (allocate-bignum (1+ ,size)))
+          into resallocs
+        collect `(setf ,res (if (minusp (slot ,gres 'mp_size)) ; check for negative result
+                                (- (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size))
+                                (gmp-z-to-bignum (slot ,gres 'mp_d) ,res ,size)))
+          into copylimbs
+        collect `(__gmpz_clear (addr ,gres)) into clears
         collect res into results
         finally (return
-                  `(let ,resinits
-                     (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
-                     (sb-sys:without-gcing
-                      (with-alien ,declares
-                        ,@inits
-                        ,@body
-                        ,@letnormlimbs))
-                     (values ,@results)))))
-
-;; the default case is to initially allocate one limb for the result
-(defmacro with-results (resultvars &body body)
-  (loop for gres in resultvars
-        collect `(,gres 1) into inits
-        finally (return
-                  `(with-allocated-results ,inits
-                     ,@body))))
+                  `(with-alien ,declares
+                     ,@inits
+                     ,@body
+                     (let ,resinits
+                       (declare (type bignum-length ,@sizes))
+                       ,@checks
+                       (let ,resallocs
+                       ;; copy GMP limbs into result bignum
+                         (sb-sys:with-pinned-objects ,results
+                           ,@copylimbs)
+                         ,@clears
+                         (values ,@results)))))))
 
 ;;; function definition and foreign function relationships
 (defmacro defgmpfun (name args &body body)
   `(progn
      (declaim (sb-ext:maybe-inline ,name))
      (defun ,name ,args
-       (declare (optimize (speed 3) (space 3))
+       (declare (optimize (speed 3) (space 3) (safety 0))
                 (type integer ,@args))
        ,@body)))
 
 
 ;; SBCL/GMP functions
 (defgmpfun mpz-add (a b)
-  (with-allocated-results ((result (1+ (max (blength a)
-                                            (blength b)))))
+  (with-mpz-results ((result (1+ (max (blength a)
+                                      (blength b)))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_add (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-sub (a b)
-  (with-allocated-results ((result (1+ (max (blength a)
-                                            (blength b)))))
+  (with-mpz-results ((result (1+ (max (blength a)
+                                      (blength b)))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_sub (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-mul (a b)
-  (with-allocated-results ((result (+ (blength a)
-                                      (blength b))))
+  (with-mpz-results ((result (+ (blength a)
+                                (blength b))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_mul (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-mul-2exp (a b)
-  (check-type b (unsigned-byte #.sb-vm:n-word-bits))
-  (with-allocated-results ((result (+ (1+ (blength a))
-                                      (floor b sb-vm:n-word-bits))))
+  (check-type b ui)
+  (with-mpz-results ((result (+ (1+ (blength a))
+                                (floor b sb-vm:n-word-bits))))
     (with-mpz-vars ((a ga))
       (__gmpz_mul_2exp (addr result) (addr ga) b))))
 
 (defgmpfun mpz-mod (a b)
-  (with-allocated-results ((result (1+ (max (blength a)
-                                            (blength b)))))
+  (with-mpz-results ((result (1+ (max (blength a)
+                                      (blength b)))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_mod (addr result) (addr ga) (addr gb))
       (when (and (minusp (slot gb 'mp_size))
                  (/= 0 (slot result 'mp_size)))
         (__gmpz_add (addr result) (addr result) (addr gb))))))
 
+(defgmpfun mpz-divisible-p (n d)
+  "Returns T if (ZEROP (MOD N D))."
+  (with-mpz-vars ((n gn) (d gd))
+    (not
+      (zerop
+        (__gmpz_divisible_p (addr gn) (addr gd))))))
+
+
 (defgmpfun mpz-cdiv (n d)
   (let ((size (1+ (max (blength n)
                        (blength d)))))
-    (with-allocated-results ((quot size)
-                             (rem size))
+    (with-mpz-results ((quot size)
+                       (rem size))
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_cdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defgmpfun mpz-fdiv (n d)
   (let ((size (1+ (max (blength n)
                        (blength d)))))
-    (with-allocated-results ((quot size)
-                             (rem size))
+    (with-mpz-results ((quot size)
+                       (rem size))
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_fdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defgmpfun mpz-fdiv-2exp (a b)
-  (check-type b (unsigned-byte #.sb-vm:n-word-bits))
-  (with-allocated-results ((result (1+ (- (blength a)
-                                          (floor b sb-vm:n-word-bits)))))
+  (check-type b ui)
+  (with-mpz-results ((result (1+ (- (blength a)
+                                    (floor b sb-vm:n-word-bits)))))
     (with-mpz-vars ((a ga))
       (__gmpz_fdiv_q_2exp (addr result) (addr ga) b))))
 
 (defgmpfun mpz-tdiv (n d)
   (let ((size (max (blength n)
                    (blength d))))
-    (with-allocated-results ((quot size)
-                             (rem size))
+    (with-mpz-results ((quot size)
+                       (rem size))
       (with-mpz-vars ((n gn) (d gd))
         (__gmpz_tdiv_qr (addr quot) (addr rem) (addr gn) (addr gd))))))
 
 (defgmpfun mpz-pow (base exp)
   (check-type exp (integer 0 #.most-positive-fixnum))
-  (with-results (rop)
+  (with-gmp-mpz-results (rop)
     (with-mpz-vars ((base gbase))
       (__gmpz_pow_ui (addr rop) (addr gbase) exp))))
 
 (defgmpfun mpz-powm (base exp mod)
-  (with-allocated-results ((rop (1+ (blength mod))))
+  (with-mpz-results ((rop (1+ (blength mod))))
     (with-mpz-vars ((base gbase) (exp gexp) (mod gmod))
       (__gmpz_powm (addr rop) (addr gbase) (addr gexp) (addr gmod)))))
 
 (defgmpfun mpz-gcd (a b)
-  (with-allocated-results ((result (min (blength a)
-                                        (blength b))))
+  (with-mpz-results ((result (min (blength a)
+                                  (blength b))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_gcd (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-lcm (a b)
-  (with-allocated-results ((result (+ (blength a)
-                                      (blength b))))
+  (with-mpz-results ((result (+ (blength a)
+                                (blength b))))
     (with-mpz-vars ((a ga) (b gb))
       (__gmpz_lcm (addr result) (addr ga) (addr gb)))))
 
 (defgmpfun mpz-sqrt (a)
-  (with-allocated-results ((result (1+ (ceiling (blength a) 2))))
+  (with-mpz-results ((result (1+ (ceiling (blength a) 2))))
     (with-mpz-vars ((a ga))
       (__gmpz_sqrt (addr result) (addr ga)))))
 
@@ -473,30 +552,48 @@
     (__gmpz_probab_prime_p (addr gn) reps)))
 
 (defgmpfun mpz-nextprime (a)
-  (with-results (prime)
+  (with-gmp-mpz-results (prime)
     (with-mpz-vars ((a ga))
       (__gmpz_nextprime (addr prime) (addr ga)))))
 
 (defgmpfun mpz-fac (n)
-  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
-  (with-results (fac)
+  (check-type n ui)
+  (with-gmp-mpz-results (fac)
     (__gmpz_fac_ui (addr fac) n)))
 
 (defgmpfun %mpz-2fac (n)
-  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
-  (with-results (fac)
+  (check-type n ui)
+  (with-gmp-mpz-results (fac)
     (__gmpz_2fac_ui (addr fac) n)))
 
 (defgmpfun %mpz-mfac (n m)
-  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
-  (check-type m (unsigned-byte #.sb-vm:n-word-bits))
-  (with-results (fac)
+  (check-type n ui)
+  (check-type m ui)
+  (with-gmp-mpz-results (fac)
     (__gmpz_mfac_uiui (addr fac) n m)))
 
 (defgmpfun %mpz-primorial (n)
-  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
-  (with-results (r)
+  (check-type n ui)
+  (with-gmp-mpz-results (r)
     (__gmpz_primorial_ui (addr r) n)))
+
+(defgmpfun mpz-remove-5.1 (n f)
+  (check-type f unsigned-byte
+              "handled by GMP prior to version 5.1")
+  (let* ((c 0)
+         (res (with-gmp-mpz-results (r)
+                (with-mpz-vars ((n gn)
+                                (f gf))
+                  (setf c (__gmpz_remove (addr r) (addr gn) (addr gf)))))))
+    (values res c)))
+
+(defgmpfun mpz-remove (n f)
+  (let* ((c 0)
+         (res (with-gmp-mpz-results (r)
+                (with-mpz-vars ((n gn)
+                                (f gf))
+                  (setf c (__gmpz_remove (addr r) (addr gn) (addr gf)))))))
+    (values res c)))
 
 (defun setup-5.1-stubs ()
   (macrolet ((stubify (name implementation &rest arguments)
@@ -509,56 +606,30 @@
                                    ',name))))))
     (stubify mpz-2fac %mpz-2fac n)
     (stubify mpz-mfac %mpz-mfac n m)
-    (stubify mpz-primorial %mpz-primorial n)
-    (unless (member :sb-gmp-5.1 *gmp-features*)
-      (setf (fdefinition 'mpz-remove) #'mpz-remove-5.1))))
-
-(defgmpfun mpz-remove-5.1 (n f)
-  (check-type f unsigned-byte
-              "only handled by GMP prior to version 5.1")
-  (let* ((c 0)
-         (res (with-results (r)
-                (with-mpz-vars ((n gn)
-                                (f gf))
-                  (setf c (__gmpz_remove (addr r) (addr gn) (addr gf)))
-                  ;; the limb at |size|+1 is not set correctly to 0, so do it
-                  ;; to not confuse %normalize-bignum
-                  (when (> (slot r 'mp_alloc) (abs (slot r 'mp_size)))
-                    (%bignum-set (data-sap-bignum (alien-sap (slot r 'mp_d)))
-                                 (1- (slot r 'mp_alloc))
-                                 0))))))
-    (values res c)))
-
-
-(defgmpfun mpz-remove (n f)
-  (let* ((c 0)
-         (res (with-results (r)
-                (with-mpz-vars ((n gn)
-                                (f gf))
-                  (setf c (__gmpz_remove (addr r) (addr gn) (addr gf)))
-                  ;; the limb at |size|+1 is not set correctly to 0, so do it
-                  ;; to not confuse %normalize-bignum
-                  (when (> (slot r 'mp_alloc) (abs (slot r 'mp_size)))
-                    (%bignum-set (data-sap-bignum (alien-sap (slot r 'mp_d)))
-                                 (abs (slot r 'mp_size))
-                                 0))))))
-    (values res c)))
+    (stubify mpz-primorial %mpz-primorial n))
+  (unless (member :sb-gmp-5.1 *gmp-features*)
+    (setf (fdefinition 'mpz-remove) #'mpz-remove-5.1)))
 
 (defgmpfun mpz-bin (n k)
-  (check-type k (unsigned-byte #.sb-vm:n-word-bits))
-  (with-results (r)
+  (check-type k ui)
+  (with-gmp-mpz-results (r)
     (with-mpz-vars ((n gn))
       (__gmpz_bin_ui (addr r) (addr gn) k))))
 
 (defgmpfun mpz-fib2 (n)
-  (check-type n (unsigned-byte #.sb-vm:n-word-bits))
-  (with-results (fibn fibn-1)
+  ;; (let ((size (1+ (ceiling (* n (log 1.618034 2)) 64)))))
+  ;; fibonacci number magnitude in bits is asymptotic to n(log_2 phi)
+  ;; This is correct for the result but appears not to be enough for GMP
+  ;; during computation (memory access error), so use GMP-side allocation.
+  (check-type n ui)
+  (with-gmp-mpz-results (fibn fibn-1)
     (__gmpz_fib2_ui (addr fibn) (addr fibn-1) n)))
 
 
 ;;;; Random bignum (mpz) generation
 
-;; internal structure of GMP radom state
+;; we do not actually use the gestalt of the struct but need its size
+;; for allocation purposes
 (define-alien-type nil
     (struct gmprandstate
             (mp_seed (struct gmpint))
@@ -567,7 +638,6 @@
 
 (declaim (inline __gmp_randinit_mt
                  __gmp_randinit_lc_2exp
-                 __gmp_randinit_lc_2exp_size
                  __gmp_randseed
                  __gmp_randseed_ui
                  __gmpz_urandomb
@@ -581,10 +651,6 @@
   (a (* (struct gmpint)))
   (c unsigned-long)
   (exp unsigned-long))
-
-(define-alien-routine __gmp_randinit_lc_2exp_size void
-  (s (* (struct gmprandstate)))
-  (sz unsigned-long))
 
 (define-alien-routine __gmp_randseed void
   (s (* (struct gmprandstate)))
@@ -604,12 +670,9 @@
   (s (* (struct gmprandstate)))
   (n (* (struct gmpint))))
 
-;; GMP random state representation in SB-GMP
-(defstruct (gmp-rstate (:constructor %make-gmp-rstate)
-                       (:constructor %make-gmp-rstate-boa (seed rfun)))
-  (seed (%allocate-bignum 1)
-   :type integer)
-  (rfun (sap-alien (sb-sys:int-sap 0) (* t)) :type (alien (* t))))
+(defstruct (gmp-rstate (:constructor %make-gmp-rstate))
+  (ref (make-alien (struct gmprandstate))
+   :type (alien (* (struct gmprandstate))) :read-only t))
 
 (declaim (sb-ext:maybe-inline make-gmp-rstate
                               make-gmp-rstate-lc
@@ -617,85 +680,59 @@
                               random-bitcount
                               random-int))
 
-(defmacro with-rstate ((ref state) &body body)
-  `(with-alien ((,ref (struct gmprandstate)))
-     (setf (slot (slot ,ref 'mp_seed) 'mp_d)
-           (bignum-data-sap (gmp-rstate-seed state))
-           (slot ,ref 'mp_algdata)
-           (gmp-rstate-rfun ,state))
-     ,@body
-     (setf (gmp-rstate-seed ,state)
-           (data-sap-bignum (alien-sap (slot (slot ,ref 'mp_seed) 'mp_d))))))
-
-(defun make-gmp-rstate-mt ()
+(defun make-gmp-rstate ()
   "Instantiate a state for the GMP Mersenne-Twister random number generator."
   (declare (optimize (speed 3) (space 3) (safety 0)))
-  (sb-sys:without-gcing
-    (with-alien ((ref (struct gmprandstate)))
-      (__gmp_randinit_mt (addr ref))
-      (%make-gmp-rstate-boa (data-sap-bignum (alien-sap (slot (slot ref 'mp_seed) 'mp_d)))
-                            (slot ref 'mp_algdata)))))
+  (let* ((state (%make-gmp-rstate))
+         (ref (gmp-rstate-ref state)))
+    (__gmp_randinit_mt ref)
+    (sb-ext:finalize state (lambda () (free-alien ref)))
+    state))
 
 (defun make-gmp-rstate-lc (a c m2exp)
   "Instantiate a state for the GMP linear congruential random number generator."
   (declare (optimize (speed 3) (space 3)))
-  (check-type c (unsigned-byte #.sb-vm:n-word-bits))
-  (check-type m2exp (unsigned-byte #.sb-vm:n-word-bits))
-  (sb-sys:without-gcing
+  (check-type c ui)
+  (check-type m2exp ui)
+  (let* ((state (%make-gmp-rstate))
+         (ref (gmp-rstate-ref state)))
     (with-mpz-vars ((a ga))
-      (with-alien ((ref (struct gmprandstate)))
-        (__gmp_randinit_lc_2exp (addr ref) (addr ga) c m2exp)
-        (%make-gmp-rstate-boa (data-sap-bignum (alien-sap (slot (slot ref 'mp_seed) 'mp_d)))
-                              (slot ref 'mp_algdata))))))
-
-(defun make-gmp-rstate-lc-size (size)
-  "Instantiate a state for the GMP linear congruential random number generator."
-  (declare (optimize (speed 3) (space 3)))
-  ;; chooses A, C and M2EXP from an internal table
-  ;; which is limited to entries of 0..128
-  (check-type size (integer 0 128))
-  (sb-sys:without-gcing
-    (with-alien ((ref (struct gmprandstate)))
-      (__gmp_randinit_lc_2exp_size (addr ref) size)
-      (%make-gmp-rstate-boa (data-sap-bignum (alien-sap (slot (slot ref 'mp_seed) 'mp_d)))
-                            (slot ref 'mp_algdata)))))
+      (__gmp_randinit_lc_2exp ref (addr ga) c m2exp))
+    (sb-ext:finalize state (lambda () (free-alien ref)))
+    state))
 
 (defun rand-seed (state seed)
   "Initialize a random STATE with SEED."
-  (declare (optimize (speed 3) (space 3)))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type state gmp-rstate)
-  (cond
-    ((typep seed '(and fixnum unsigned-byte))
-     (sb-sys:without-gcing
-       (with-rstate (ref state)
-         (__gmp_randseed_ui (addr ref) seed))))
-    ((typep seed 'unsigned-byte)
-     (sb-sys:without-gcing
+  (let ((ref (gmp-rstate-ref state)))
+    (cond
+      ((typep seed 'ui)
+       (__gmp_randseed_ui ref seed))
+      ((typep seed '(integer 0 *))
        (with-mpz-vars ((seed gseed))
-         (with-rstate (ref state)
-           (__gmp_randseed (addr ref) (addr gseed))))))
-    (t
-     (error "SEED must be a positive integer")))
-  state)
+         (__gmp_randseed ref (addr gseed))))
+      (t
+       (error "SEED must be a positive integer")))))
 
 (defun random-bitcount (state bitcount)
   "Return a random integer in the range 0..(2^bitcount - 1)."
-  (declare (optimize (speed 3) (space 3))
-           (type (and fixnum unsigned-byte) bitcount))
+  (declare (optimize (speed 3) (space 3) (safety 0)))
   (check-type state gmp-rstate)
-  (with-allocated-results ((result (+ (ceiling bitcount sb-vm:n-word-bits) 2)))
-    (with-rstate (ref state)
-      (__gmpz_urandomb (addr result) (addr ref) bitcount))))
+  (check-type bitcount ui)
+  (let ((ref (gmp-rstate-ref state)))
+    (with-mpz-results ((result (+ (ceiling bitcount sb-vm:n-word-bits) 2)))
+      (__gmpz_urandomb (addr result) ref bitcount))))
 
 (defun random-int (state boundary)
   "Return a random integer in the range 0..(boundary - 1)."
   (declare (optimize (speed 3) (space 3)))
   (check-type state gmp-rstate)
-  (let ((b (bassert boundary)))
-    (with-allocated-results ((result (1+ (%bignum-length b))))
+  (let ((b (bassert boundary))
+        (ref (gmp-rstate-ref state)))
+    (with-mpz-results ((result (1+ (%bignum-length b))))
       (with-mpz-vars ((b gb))
-        (with-rstate (ref state)
-            (__gmpz_urandomm (addr result) (addr ref) (addr gb)))))))
+        (__gmpz_urandomm (addr result) ref (addr gb))))))
 
 
 ;;; Rational functions
@@ -740,9 +777,9 @@
                            (blength (denominator b)))
                       3)))
          (with-alien ((r (struct gmprat)))
-           (let ((num (%allocate-bignum size))
-                 (den (%allocate-bignum size)))
-             (sb-sys:without-gcing
+           (let ((num (allocate-bignum size))
+                 (den (allocate-bignum size)))
+             (sb-sys:with-pinned-objects (num den)
                (setf (slot (slot r 'mp_num) 'mp_size) 0
                      (slot (slot r 'mp_num) 'mp_alloc) size
                      (slot (slot r 'mp_num) 'mp_d) (bignum-data-sap num))
@@ -765,38 +802,29 @@
                         (bdlen (%lsize NIL bd)))
                    (with-alien ((arga (struct gmprat))
                                 (argb (struct gmprat)))
-                     (setf (slot (slot arga 'mp_num) 'mp_size) anlen
-                           (slot (slot arga 'mp_num) 'mp_alloc) (abs anlen)
-                           (slot (slot arga 'mp_num) 'mp_d)
-                           (bignum-data-sap an))
-                     (setf (slot (slot arga 'mp_den) 'mp_size) adlen
-                           (slot (slot arga 'mp_den) 'mp_alloc) (abs adlen)
-                           (slot (slot arga 'mp_den) 'mp_d)
-                           (bignum-data-sap ad))
-                     (setf (slot (slot argb 'mp_num) 'mp_size) bnlen
-                           (slot (slot argb 'mp_num) 'mp_alloc) (abs bnlen)
-                           (slot (slot argb 'mp_num) 'mp_d)
-                           (bignum-data-sap bn))
-                     (setf (slot (slot argb 'mp_den) 'mp_size) bdlen
-                           (slot (slot argb 'mp_den) 'mp_alloc) (abs bdlen)
-                           (slot (slot argb 'mp_den) 'mp_d)
-                           (bignum-data-sap bd))
-                     (,gmpfun (addr r) (addr arga) (addr argb))))
+                     (sb-sys:with-pinned-objects (an ad bn bd)
+                       (setf (slot (slot arga 'mp_num) 'mp_size) anlen
+                             (slot (slot arga 'mp_num) 'mp_alloc) (abs anlen)
+                             (slot (slot arga 'mp_num) 'mp_d)
+                             (bignum-data-sap an))
+                       (setf (slot (slot arga 'mp_den) 'mp_size) adlen
+                             (slot (slot arga 'mp_den) 'mp_alloc) (abs adlen)
+                             (slot (slot arga 'mp_den) 'mp_d)
+                             (bignum-data-sap ad))
+                       (setf (slot (slot argb 'mp_num) 'mp_size) bnlen
+                             (slot (slot argb 'mp_num) 'mp_alloc) (abs bnlen)
+                             (slot (slot argb 'mp_num) 'mp_d)
+                             (bignum-data-sap bn))
+                       (setf (slot (slot argb 'mp_den) 'mp_size) bdlen
+                             (slot (slot argb 'mp_den) 'mp_alloc) (abs bdlen)
+                             (slot (slot argb 'mp_den) 'mp_d)
+                             (bignum-data-sap bd))
+                       (,gmpfun (addr r) (addr arga) (addr argb)))))
                  (locally (declare (optimize (speed 1)))
-                   (sb-kernel::build-ratio (if (minusp (slot (slot r 'mp_num) 'mp_size))
-                                               (%normalize-bignum
-                                                (negate-bignum-in-place
-                                                 (data-sap-bignum
-                                                  (alien-sap (slot (slot r 'mp_num) 'mp_d))))
-                                                (slot (slot r 'mp_num) 'mp_alloc))
-                                               (%normalize-bignum
-                                                (data-sap-bignum
-                                                 (alien-sap (slot (slot r 'mp_num) 'mp_d)))
-                                                (slot (slot r 'mp_num) 'mp_alloc)))
-                                           (%normalize-bignum
-                                            (data-sap-bignum
-                                             (alien-sap (slot (slot r 'mp_den) 'mp_d)))
-                                            (slot (slot r 'mp_den) 'mp_alloc))))))))))))
+                   (sb-kernel:build-ratio (if (minusp (slot (slot r 'mp_num) 'mp_size))
+                                               (z-to-bignum-neg num size)
+                                               (z-to-bignum num size))
+                                           (z-to-bignum den size)))))))))))
 
 (defmpqfun mpq-add __gmpq_add)
 (defmpqfun mpq-sub __gmpq_sub)
@@ -827,7 +855,7 @@
 ;;; integers
 (defun gmp-mul (a b)
   (declare (optimize (speed 3) (space 3))
-           (type bignum-type a b)
+           (type bignum a b)
            (inline mpz-mul))
   (if (or (< (min (%bignum-length a)
                   (%bignum-length b))
@@ -838,7 +866,7 @@
 
 (defun gmp-truncate (a b)
   (declare (optimize (speed 3) (space 3))
-           (type bignum-type a b)
+           (type bignum a b)
            (inline mpz-tdiv))
   (if (or (< (min (%bignum-length a)
                   (%bignum-length b))
@@ -912,18 +940,15 @@
 
 (defun gmp-intexp (base power)
   (declare (inline mpz-mul-2exp mpz-pow))
-  (check-type power (integer #.(1+ most-negative-fixnum) #.most-positive-fixnum))
   (cond
     ((or (and (integerp base)
               (< (abs power) 1000)
               (< (blength base) 4))
+         (member base '(0 1 -1))
          *gmp-disabled*)
      (orig-intexp base power))
     (t
-     (when (and sb-kernel::*intexp-maximum-exponent*
-                (> (abs power) sb-kernel::*intexp-maximum-exponent*))
-       (error "The absolute value of ~S exceeds ~S."
-              power 'sb-kernel::*intexp-maximum-exponent*))
+     (check-type power (integer #.(1+ most-negative-fixnum) #.most-positive-fixnum))
      (cond ((minusp power)
             (/ (the integer (gmp-intexp base (- power)))))
            ((eql base 2)
@@ -935,16 +960,8 @@
             (mpz-pow base power))))))
 
 ;;; installation
-(defmacro with-package-locks-ignored (&body body)
-  `(handler-bind ((sb-ext:package-lock-violation
-                    (lambda (condition)
-                      (declare (ignore condition))
-                      (invoke-restart :ignore-all))))
-     ,@body))
-
 (defun install-gmp-funs ()
-  (init-allocation-functions)
-  (with-package-locks-ignored
+  (sb-ext:without-package-locks
       (macrolet ((def (destination source)
                    `(setf (fdefinition ',destination)
                           (fdefinition ',source))))
@@ -961,7 +978,7 @@
   (values))
 
 (defun uninstall-gmp-funs ()
-  (with-package-locks-ignored
+  (sb-ext:without-package-locks
       (macrolet ((def (destination source)
                    `(setf (fdefinition ',destination)
                           ,(intern (format nil "*~A-FUNCTION*" source)))))
